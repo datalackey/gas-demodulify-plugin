@@ -1,0 +1,65 @@
+
+
+The plugin uses user-supplied namespace configuration together with the
+resolved, transpiled module sources provided by Webpack’s compilation pipeline
+(after dependency resolution and type-checking, but before runtime execution)
+to emit clean top-level functions, classes, and namespace exports that are
+compatible with both the Apps Script runtime and HtmlService delivery model.
+
+
+
+web pack development:
+
+    - set up simple project.. make sure debug w/ devtools works.
+        - look at calling code 
+
+
+    - find out how the plugin can be installed.. then smoke tested that install works.
+        - how to ensure not cached and that we have latest version ?
+
+
+✔ 3. Export Surface Preservation Tests
+
+Ensure the plugin correctly maps:
+
+default exports
+
+named exports
+
+aliased exports
+
+re-exports from COMMON libraries
+
+index-file re-export patterns
+
+Because your plugin needs to attach real symbols to global namespaces, not lose them in translation.
+
+....
+
+Tests that should live in this repo (plugin-level):
+Test Type	Purpose
+Namespace attachment tests	Ensure globals/namespaces are created correctly
+Demodulification tests	Ensure Webpack runtime is fully removed
+Export mapping tests	Validate correct exposure of symbol surfaces
+UI HTML fragment tests	Ensure UI bundles generate correct HTML
+Multi-build tests	GAS/UI/COMMON outputs remain isolated
+Integration (Webpack) tests	Ensure real builds behave correctly
+Invariant A
+
+All GAS-visible functions exist at top level.
+
+Invariant B
+
+No Webpack runtime appears in the output.
+
+Invariant C
+
+Namespace trees exist before assignments.
+
+Invariant D
+
+COMMON code does not leak into UI or GAS namespaces.
+
+Invariant E
+
+Import → namespace bindings always resolve correctly.
