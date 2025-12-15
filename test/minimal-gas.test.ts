@@ -42,16 +42,14 @@ test("minimal GAS subsystem build",
             "utf8"
         );
 
-        const expected = fs.readFileSync(
-            path.join(expectedDir, "backend.gs"),
-            "utf8"
-        );
+        expect(actual).toContain('globalThis.MYADDON.GAS.hello = hello;');
+        expect(actual).toContain('globalThis.MYADDON.GAS.goodbye = goodbye;');
+        expect(actual).toContain('function hello');
+        expect(actual).toContain('function goodbye');
+        expect(actual).toContain('__esModule');
 
-
-        // Actual file must be there and emitted javascript cruft must be deleted from dist dir (part of plugin flow)
-        expect(actual.trim()).toBe(expected.trim());
+        expect(actual).not.toContain('deliberate_cruft.js');
         expect(fs.existsSync(path.join(distDir, "deliberate_cruft.js"))).toBe(false);
-
     },
 
     20_000

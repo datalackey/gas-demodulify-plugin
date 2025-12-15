@@ -12,5 +12,10 @@ function hello() {
   return "hello from gas";
 }
 
+function goodbye() {
+  return "goodbye from gas";
+}
+
 // Export surface
 globalThis.MYADDON.GAS.hello = hello;
+globalThis.MYADDON.GAS.goodbye = goodbye;
