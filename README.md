@@ -342,6 +342,43 @@ Controls which artifacts are emitted:
 - "ui" → emits .html with inline script tags
 - "common" → emits both .gs and .html
 
+
+### *defaultExportName*
+
+Controls how default exports are attached to the GAS namespace.
+
+If this option *is* provided, the default export is mapped to the specified symbol name.
+If this option *is not* provided, default exports are mapped to the symbol `defaultExport`.
+
+#### Example
+
+Given the following source code:
+
+> export default function foo() {}
+
+
+If no defaultExportName is specified, the generated output will be:
+
+> globalThis.MYADDON.UI.defaultExport = foo;
+
+
+If defaultExportName is specified:
+
+>       new GASDemodulifyPlugin({
+>         namespaceRoot: "MYADDON",
+>         subsystem: "UI",
+>         buildMode: "ui",
+>         defaultExportName: "main",
+>         logLevel: "info"
+>       });
+
+
+
+The generated output will be:
+
+> globalThis.MYADDON.UI.main = foo;
+
+
 ### *logLevel*
 
 
@@ -350,6 +387,7 @@ Controls which artifacts are emitted:
 | omitted / "silent"	   | no output                    |
 | "info"               | High-level lifecycle messages    |
 | "debug"              | Full internal diagnostics        |      
+
 
 
 
