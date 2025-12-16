@@ -29,17 +29,20 @@ export function getEmitterFunc(
             return;
         }
 
-        const exportedSymbolNames: string[] = getExportedSymbolNames(compilation, entryModule,  logger);
-        const moduleSource =
+        const rawModuleSource =
             entryModule && runtime
                 ? getModuleSource(compilation, entryModule, runtime)
                 : "";
-        const content = getGasSafeOutput(namespace, moduleSource, exportedSymbolNames);
+
+        const sanitzedModuleSource = sanitizeWebpackHelpers(rawModuleSource, logger);
+
+        const exportedSymbolNames: string[] = getExportedSymbolNames(compilation, entryModule, logger);
+
+        const content = getGasSafeOutput(namespace, sanitzedModuleSource, exportedSymbolNames);
 
         cleanupJsAssets(compilation, logger);
 
         const outputName = "backend.gs";
-
         compilation.emitAsset(
             outputName,
             new sources.RawSource(content)
@@ -79,14 +82,15 @@ function getGasSafeOutput(namespace: string, moduleSource: string, exportedSymbo
         `;
 }
 
-
-
-function getExportedSymbolNames(compilation: Compilation, entryModule: Module, logger: Logger) : string[] {
+function getExportedSymbolNames(
+    compilation: Compilation,
+    entryModule: Module,
+    logger: Logger
+) : string[] {
 
     function isSyntheticExport(name: string): boolean {
         return name === "__esModule";
     }
-
 
     const exportedNames: string[] = [];
     const exportsInfo = compilation.moduleGraph.getExportsInfo(entryModule);
@@ -133,6 +137,46 @@ function getModuleSource(
     return source.source().toString();
 }
 
+/**
+ * Remove Webpack codegen helper artifacts from the module body.
+ * Operates conservatively at the line level.
+ */
+function sanitizeWebpackHelpers(
+    source: string,
+    logger: Logger
+): string {
+    if (!source.trim()) {
+        return source;
+    }
+
+    const lines = source.split(/\r?\n/);
+    const kept: string[] = [];
+    let removed = 0;
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+
+        if (trimmed.startsWith("var __webpack_")) {
+            removed++;
+            continue;
+        }
+
+        if (trimmed.startsWith("__webpack_")) {
+            removed++;
+            continue;
+        }
+
+        kept.push(line);
+    }
+
+    if (removed > 0) {
+        logger.debug(
+            `Removed ${removed} Webpack helper line(s) from module source`
+        );
+    }
+
+    return kept.join("\n").trim();
+}
 
 function renderNamespaceInit(namespace: string): string {
     return dedent`

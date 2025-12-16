@@ -50,6 +50,9 @@ test("minimal GAS subsystem build",
 
         expect(actual).not.toContain(".__esModule");
 
+        expect(actual).not.toContain("__webpack_unused_export__");
+        expect(actual).not.toContain("__webpack_");
+
 
         expect(actual).not.toContain('deliberate_cruft.js');
         expect(fs.existsSync(path.join(distDir, "deliberate_cruft.js"))).toBe(false);
