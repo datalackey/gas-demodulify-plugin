@@ -359,7 +359,7 @@ Given the following source code:
 
 If no defaultExportName is specified, the generated output will be:
 
-> globalThis.MYADDON.UI.defaultExport = foo;
+> globalThis.MYADDON.UI.defaultExport = defaultExport;
 
 
 If defaultExportName is specified:

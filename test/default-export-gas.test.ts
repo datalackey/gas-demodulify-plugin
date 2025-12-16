@@ -35,6 +35,6 @@ test("default export maps to defaultExport when option not set", async () => {
     );
 
     expect(actual).toContain("function foo");
-    expect(actual).toContain("globalThis.MYADDON.GAS.defaultExport = foo;");
+    expect(actual).toContain("globalThis.MYADDON.GAS.defaultExport = defaultExport;");
 });
 

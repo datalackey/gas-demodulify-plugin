@@ -9,6 +9,13 @@ import { Logger } from "./Logger";
 type EmitterOpts = {
     namespaceRoot: string;
     subsystem: string;
+    defaultExportName?: string;
+};
+
+
+type ExportBinding = {
+    exportName: string;
+    localName: string;
 };
 
 
@@ -23,26 +30,30 @@ export function getEmitterFunc(
         const namespace = `${opts.namespaceRoot}.${opts.subsystem}`;
         logger.debug(`Computed namespace: ${namespace}`);
 
-        let {entryModule, runtime} = getEntryModuleAndRuntime(compilation);
+        let { entryModule, runtime } = getEntryModuleAndRuntime(compilation);
         if (!entryModule) {
             logger.info("No entry module found; aborting emission");
             return;
         }
+
+        const exportBindings =
+            getExportBindings(compilation, entryModule, logger, opts);
 
         const rawModuleSource =
             entryModule && runtime
                 ? getModuleSource(compilation, entryModule, runtime)
                 : "";
 
-        const sanitzedModuleSource = sanitizeWebpackHelpers(rawModuleSource, logger);
+        const sanitizedModuleSource =
+            sanitizeWebpackHelpers(rawModuleSource, logger);
 
-        const exportedSymbolNames: string[] = getExportedSymbolNames(compilation, entryModule, logger);
-
-        const content = getGasSafeOutput(namespace, sanitzedModuleSource, exportedSymbolNames);
+        const content =
+            getGasSafeOutput(namespace, sanitizedModuleSource, exportBindings);
 
         cleanupJsAssets(compilation, logger);
 
         const outputName = "backend.gs";
+
         compilation.emitAsset(
             outputName,
             new sources.RawSource(content)
@@ -65,10 +76,15 @@ function getEntryModuleAndRuntime(compilation: Compilation) {
         }
         if (entryModule) break;
     }
-    return {entryModule, runtime};
+
+    return { entryModule, runtime };
 }
 
-function getGasSafeOutput(namespace: string, moduleSource: string, exportedSymbolNames: string[]) {
+function getGasSafeOutput(
+    namespace: string,
+    moduleSource: string,
+   exports: ExportBinding[]
+) {
     return dedent`
             ${renderNamespaceInit(namespace)}
 
@@ -76,39 +92,76 @@ function getGasSafeOutput(namespace: string, moduleSource: string, exportedSymbo
             ${moduleSource}
 
             // Export surface
-            ${exportedSymbolNames
-        .map(name => `globalThis.${namespace}.${name} = ${name};`)
-        .join("\n")}
+            ${exports
+                .map(e => `globalThis.${namespace}.${e.exportName} = ${e.localName};`)
+                .join("\n")}
         `;
 }
 
-function getExportedSymbolNames(
+
+/**
+ * Returns true for "synthetic" exports that are not authored by the user.
+ *
+ * "__esModule" is a boolean flag injected by bundlers (e.g. Webpack) as an interop marker
+ * for ES module / CommonJS compatibility, and it answers the T/F question:
+ * "did this value originate from an ES module?".
+ *
+ * It does not correspond to a real exported symbol in the user's source code and must not be exposed on the
+ * GAS namespace.
+ */
+function isSyntheticExport(name: string): boolean {
+    return name === "__esModule";
+}
+
+function getExportBindings(
     compilation: Compilation,
     entryModule: Module,
-    logger: Logger
-) : string[] {
+    logger: Logger,
+    opts: EmitterOpts
+): ExportBinding[] {
 
-    function isSyntheticExport(name: string): boolean {
-        return name === "__esModule";
-    }
-
-    const exportedNames: string[] = [];
+    const bindings: ExportBinding[] = [];
     const exportsInfo = compilation.moduleGraph.getExportsInfo(entryModule);
+
     for (const exportInfo of exportsInfo.orderedExports) {
-        if (typeof exportInfo.name === "string" && !isSyntheticExport(exportInfo.name)) {
-            exportedNames.push(exportInfo.name);
+        if (typeof exportInfo.name !== "string") continue;
+        if (isSyntheticExport(exportInfo.name)) continue;
+
+
+
+        if (exportInfo.name === "default") {
+            const exportName = opts.defaultExportName ?? "defaultExport";
+
+            if (!opts.defaultExportName) {
+                logger.info(
+                    "Default export mapped to fallback name 'defaultExport'"
+                );
+            }
+
+            bindings.push({
+                exportName,
+                localName: exportName
+            });
+
+            continue;
         }
+
+        bindings.push({
+            exportName: exportInfo.name,
+            localName: exportInfo.name
+        });
     }
-    if (exportedNames.length === 0) {
-        logger.info(
-            "No named exports discovered in entry module; no globals emitted"
-        );
-    }
+
     logger.debug(
-        `Discovered exports from entry module: ${exportedNames.join(", ")}`
+        `Discovered exports from entry module: ${bindings
+            .map(b => `${b.exportName} ← ${b.localName}`)
+            .join(", ")}`
     );
-    return exportedNames;
+
+    return bindings;
 }
+
+
 
 // ======================================================
 // Helpers
