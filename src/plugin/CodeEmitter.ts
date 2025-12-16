@@ -82,10 +82,16 @@ function getGasSafeOutput(namespace: string, moduleSource: string, exportedSymbo
 
 
 function getExportedSymbolNames(compilation: Compilation, entryModule: Module, logger: Logger) : string[] {
+
+    function isSyntheticExport(name: string): boolean {
+        return name === "__esModule";
+    }
+
+
     const exportedNames: string[] = [];
     const exportsInfo = compilation.moduleGraph.getExportsInfo(entryModule);
     for (const exportInfo of exportsInfo.orderedExports) {
-        if (typeof exportInfo.name === "string") {
+        if (typeof exportInfo.name === "string" && !isSyntheticExport(exportInfo.name)) {
             exportedNames.push(exportInfo.name);
         }
     }
