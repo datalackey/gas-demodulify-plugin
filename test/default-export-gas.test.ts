@@ -1,19 +1,6 @@
 import path from "path";
 import fs from "fs";
-import webpack from "webpack";
-
-function runWebpack(configPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-        const config = require(configPath);
-        webpack(config, (err, stats) => {
-            if (err) return reject(err);
-            if (stats?.hasErrors()) {
-                return reject(stats.toJson().errors);
-            }
-            resolve();
-        });
-    });
-}
+import { runWebpack } from "./utils/runWebpack";
 
 test(
     "default export maps to defaultExport when option not set",
