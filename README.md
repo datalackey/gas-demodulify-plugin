@@ -289,19 +289,45 @@ subsystems that depend on them.   You still have to think about your inter-subsy
 and choose names accordingly, but you can handle this entirely via webpack configuration, with no
 tedious post-processing required.
 
-At a minimum, you must ensure that your `common` bundle is named
-so that it sorts before any other `.gs` bundles that depend on it, using outoput.filename, like this: 
+At a minimum: ensure that your `common` bundle is named
+so that it sorts before any other `.gs` bundles that depend on it, using `output.filename`. 
+For example the configuration below would produce an output file named `00_common.[contenthash].gs`, 
+which sorts before `01_gas.[contenthash].gs` and `02_charts.[contenthash].gs` etc.
 
 ```javascript 
-  output: {
-    filename: "00_common.[contenthash].gs"
-  }
+
+    module.exports = {
+    
+       ....
+        
+      entry: {
+        common: "./src/common/index.ts",
+      }
+        ...
+            
+      output: {
+        filename: "00_[name].[contenthash].gs"
+      }
 ```
 
 
 ------------------------------------------------------------------------
 
 ## Configuration
+
+
+### General Options 
+
+
+#### module.exports.entry 
+
+The emitted output filename is derived from the Webpack entrypoint name.
+For example, an entry named gas will emit gas.gs. This was discussed in more detail in the previous section.
+
+
+
+
+### Plugin Constructor Options
 
 The code snippet below illustrates how to pass options to the GASDemodulifyPlugin constructor via
 a standard Javascript dictionary:
@@ -315,12 +341,12 @@ a standard Javascript dictionary:
 
 
 
-### *namespaceRoot*
+#### *namespaceRoot*
 
 The top-level global namespace under which all generated symbols will be attached (e.g. MYADDON, MyCompany.ProjectFoo).
 
 
-### *subsystem*
+#### *subsystem*
 
        namespaceRoot: "MYADDON"
        subsystem: "UI"
@@ -334,7 +360,7 @@ we get the namespace: `MYADDON.UI` Advanced users may specify a dotted path to c
 Which produces `MYADDON.UI.Dialogs`
 
 
-### *buildMode*
+#### *buildMode*
 
 Controls which artifacts are emitted:
 
@@ -343,14 +369,14 @@ Controls which artifacts are emitted:
 - "common" → emits both .gs and .html
 
 
-### *defaultExportName*
+#### *defaultExportName*
 
 Controls how default exports are attached to the GAS namespace.
 
 If this option *is* provided, the default export is mapped to the specified symbol name.
 If this option *is not* provided, default exports are mapped to the symbol `defaultExport`.
 
-#### Example
+###### Example
 
 Given the following source code:
 
@@ -379,7 +405,7 @@ The generated output will be:
 > globalThis.MYADDON.UI.main = foo;
 
 
-### *logLevel*
+#### *logLevel*
 
 
 | Option value         | Effect                           |

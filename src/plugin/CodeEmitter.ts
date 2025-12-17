@@ -6,16 +6,115 @@ import { sources } from "webpack";
 import dedent from "ts-dedent";
 import { Logger } from "./Logger";
 
+
+/**
+ * Configuration options are supplied to the code emitter based on
+ * the dictionary object passed into Plugin constructor.
+ *
+ * These values determine how exported symbols from the entry module
+ * are attached to the global namespace in the emitted GAS-safe output.
+ */
 type EmitterOpts = {
+    /**
+     * The root global namespace under which all emitted symbols are attached.
+     *
+     * Example:
+     *   namespaceRoot: "MYADDON"
+     *
+     * Combined with `subsystem`, this forms the full namespace path
+     * (e.g. "MYADDON.GAS", "MYADDON.UI", "MYADDON.COMMON").
+     */
     namespaceRoot: string;
+
+    /**
+     * The logical subsystem being emitted (e.g. "GAS", "UI", "COMMON").
+     *
+     * This value is appended to `namespaceRoot` to produce the final
+     * namespace used for symbol attachment.
+     *
+     * Advanced users may supply a dotted path to create deeper hierarchies
+     * (e.g. "UI.Dialogs").
+     */
     subsystem: string;
+
+    /**
+     * Optional override for how a default export is exposed on the namespace.
+     *
+     * If omitted, default exports are mapped to the symbol name "defaultExport".
+     * If provided, the default export is attached using the supplied name.
+     */
     defaultExportName?: string;
 };
 
-
+/**
+ * Describes a single exported symbol binding to be emitted.
+ *
+ * Each binding represents the relationship between a symbol name
+ * exposed on the global namespace and the corresponding local identifier
+ * defined in the transpiled module source.
+ */
 type ExportBinding = {
+    /**
+     * The name under which the symbol is attached to the global namespace.
+     *
+     * Example:
+     *   globalThis.MYADDON.GAS[exportName] = localName;
+     */
     exportName: string;
+
+    /**
+     * The local identifier that exists in the emitted module source.
+     *
+     * This must refer to a real, top-level function or class name
+     * present after Webpack transpilation.
+     */
     localName: string;
+};
+
+
+/**
+ * Describes the resolved Webpack entrypoint selected for demodulification.
+ *
+ * This structure captures the minimum information required to flatten a
+ * Webpack bundle into GAS-compatible output without executing Webpack's runtime.
+ *
+ * Design invariant:
+ * - Exactly one entrypoint is processed per Webpack configuration.
+ * - If multiple entrypoints exist, the first encountered entrypoint is selected.
+ */
+type ResolvedEntrypoint = {
+    /**
+     * Logical name of the entrypoint as defined in webpack.config.js.
+     *
+     * Example:
+     *   entry: { gas: "./src/gas/index.ts" }
+     *   → entryName === "gas"
+     *
+     * This name typically reflects subsystem intent (GAS, UI, COMMON)
+     * and is commonly used for output filename derivation and logging.
+     */
+    entryName: string | undefined;
+
+    /**
+     * Root Webpack module corresponding to the entrypoint source file
+     * (e.g. "./src/gas/index.ts").
+     *
+     * This module:
+     * - Anchors the module dependency graph
+     * - Provides authoritative export metadata
+     * - Is used to extract transpiled JavaScript source
+     */
+    entryModule: Module | undefined;
+
+    /**
+     * Webpack runtime identifier associated with the entry chunk.
+     *
+     * Required to retrieve the correct code-generation output from
+     * compilation.codeGenerationResults.
+     *
+     * This is a Webpack-internal concept and is unrelated to GAS or browser runtimes.
+     */
+    runtime: any | undefined;
 };
 
 
@@ -30,60 +129,98 @@ export function getEmitterFunc(
         const namespace = `${opts.namespaceRoot}.${opts.subsystem}`;
         logger.debug(`Computed namespace: ${namespace}`);
 
-        let { entryModule, runtime } = getEntryModuleAndRuntime(compilation);
-        if (!entryModule) {
-            logger.info("No entry module found; aborting emission");
+        const { entryModule, runtime, entryName } =
+            getEntryModuleAndRuntime(compilation);
+
+        if (!entryModule || !entryName) {
+            logger.info("No entry module or entry name found; aborting emission");
             return;
         }
 
-        const exportBindings =
-            getExportBindings(compilation, entryModule, logger, opts);
-
         const rawModuleSource =
-            entryModule && runtime
+            runtime
                 ? getModuleSource(compilation, entryModule, runtime)
                 : "";
 
         const sanitizedModuleSource =
             sanitizeWebpackHelpers(rawModuleSource, logger);
 
+        const exportBindings =
+            getExportBindings(compilation, entryModule, logger, opts);
+
         const content =
             getGasSafeOutput(namespace, sanitizedModuleSource, exportBindings);
 
         cleanupJsAssets(compilation, logger);
 
-        const outputName = "backend.gs";
+        // 🔑 Output filename derived from Webpack entry name
+        const outputName = `${entryName}.gs`;
 
         compilation.emitAsset(
             outputName,
             new sources.RawSource(content)
         );
+
         logger.debug(`Emitted assets: ${outputName}`);
     };
 }
 
-function getEntryModuleAndRuntime(compilation: Compilation) {
-    let entryModule: Module | undefined;
-    let runtime: any | undefined;
 
-    for (const [, entrypoint] of compilation.entrypoints) {
+/**
+ * Resolves the single entry module and its runtime information from the Webpack compilation.
+ *
+ * Invariant:
+ *   GASDemodulifyPlugin requires exactly one Webpack entrypoint per compilation.
+ *
+ * Rationale:
+ *   - Each Webpack config corresponds to exactly one GAS subsystem (GAS, UI, COMMON, etc.)
+ *   - GAS loads `.gs` files lexicographically; multi-entry builds would introduce
+ *     ambiguous ordering and namespace collisions.
+ *   - Explicit single-entry enforcement prevents silent misconfiguration.
+ *
+ * If more than one entrypoint is present, this function throws.
+ *
+ * @throws Error if the compilation defines zero or more than one entrypoint.
+ */
+function getEntryModuleAndRuntime( compilation: Compilation ): ResolvedEntrypoint {
+
+    const candidates: ResolvedEntrypoint[] = [];
+
+    for (const [entryName, entrypoint] of compilation.entrypoints) {
         const chunk = entrypoint.getEntrypointChunk();
-        runtime = chunk.runtime;
+        const runtime = chunk.runtime;
+
+        let entryModule: Module | undefined;
 
         for (const module of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
             entryModule = module;
             break;
         }
-        if (entryModule) break;
+
+        // Ignore entrypoints that do not originate from TypeScript
+        const resource = (entryModule as any)?.resource;
+        if (typeof resource === "string" && resource.endsWith(".ts")) {
+            candidates.push({ entryName, entryModule, runtime });
+        }
     }
 
-    return { entryModule, runtime };
+    if (candidates.length !== 1) {
+        const names = candidates.map(c => c.entryName).join(", ");
+        throw new Error(
+            `GASDemodulifyPlugin requires exactly one TypeScript entrypoint, ` +
+            `but found ${candidates.length}: [${names}]`
+        );
+    }
+
+    return candidates[0];
 }
+
+
 
 function getGasSafeOutput(
     namespace: string,
     moduleSource: string,
-   exports: ExportBinding[]
+    exports: ExportBinding[]
 ) {
     return dedent`
             ${renderNamespaceInit(namespace)}
@@ -93,11 +230,10 @@ function getGasSafeOutput(
 
             // Export surface
             ${exports
-                .map(e => `globalThis.${namespace}.${e.exportName} = ${e.localName};`)
-                .join("\n")}
+        .map(e => `globalThis.${namespace}.${e.exportName} = ${e.localName};`)
+        .join("\n")}
         `;
 }
-
 
 /**
  * Returns true for "synthetic" exports that are not authored by the user.
@@ -124,10 +260,8 @@ function getExportBindings(
     const exportsInfo = compilation.moduleGraph.getExportsInfo(entryModule);
 
     for (const exportInfo of exportsInfo.orderedExports) {
-        if (typeof exportInfo.name !== "string") continue;
-        if (isSyntheticExport(exportInfo.name)) continue;
-
-
+        if (isSyntheticExport(exportInfo.name))
+            continue;
 
         if (exportInfo.name === "default") {
             const exportName = opts.defaultExportName ?? "defaultExport";
@@ -160,8 +294,6 @@ function getExportBindings(
 
     return bindings;
 }
-
-
 
 // ======================================================
 // Helpers

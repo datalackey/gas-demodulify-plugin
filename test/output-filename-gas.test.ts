@@ -16,12 +16,12 @@ function runWebpack(configPath: string): Promise<void> {
 }
 
 test(
-    "default export maps to defaultExport when option not set",
+    "GAS output filename is derived from entry name",
     async () => {
         const fixtureDir = path.join(
             __dirname,
             "fixtures",
-            "default-export-gas"
+            "output-filename-gas"
         );
 
         const distDir = path.join(fixtureDir, "dist");
@@ -31,15 +31,13 @@ test(
 
         await runWebpack(path.join(fixtureDir, "webpack.config.js"));
 
-        const actual = fs.readFileSync(
-            path.join(distDir, "backend.gs"),
-            "utf8"
-        );
+        const files = fs.readdirSync(distDir);
 
-        expect(actual).toContain("function foo");
-        expect(actual).toContain(
-            "globalThis.MYADDON.GAS.defaultExport = defaultExport;"
-        );
+        // ❌ This will FAIL with current implementation
+        expect(files).toContain("gas.gs");
+
+        // Optional sanity check
+        expect(files).not.toContain("backend.gs");
     },
     20_000
 );
