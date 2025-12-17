@@ -249,6 +249,53 @@ function isSyntheticExport(name: string): boolean {
     return name === "__esModule";
 }
 
+
+/**
+ * Discovers and validates the explicit export surface of the Webpack entry module.
+ *
+ * This function translates Webpack's `ExportsInfo` metadata into a concrete list
+ * of export bindings that can be safely attached to a Google Apps Script
+ * global namespace.
+ *
+ * ## Responsibilities
+ *
+ * 1. **Enumerate explicit exports**
+ *    - Iterates over the entry module's declared exports
+ *    - Filters out synthetic / bundler-injected exports (e.g. "__esModule")
+ *    - Preserves named exports verbatim
+ *
+ * 2. **Handle default exports deterministically**
+ *    - Default exports are mapped to:
+ *        - `opts.defaultExportName` if provided
+ *        - `"defaultExport"` otherwise
+ *    - No attempt is made to infer original symbol names
+ *
+ * 3. **Enforce export-surface determinism (fail-fast)**        -- see Guardrail, below
+ *    - Wildcard re-exports (`export * from "./module"`) are explicitly unsupported
+ *    - These manifest in Webpack as `exportsInfo.otherExportsInfo`
+ *    - If the export surface cannot be statically enumerated at build time,
+ *      the build fails with a clear, actionable error
+ *
+ *    Rationale:
+ *    Google Apps Script requires a fully known, explicit global surface.
+ *    Wildcard re-exports prevent safe namespace flattening and can lead to
+ *    silent miscompilation.
+ *
+ * 4. **Normalize Webpack iterables**
+ *    - `exportsInfo.orderedExports` is an Iterable, not a guaranteed Array
+ *    - This function normalizes it via `Array.from(...)` to avoid runtime errors
+ *
+ * ## Design Invariants
+ *
+ * - All emitted exports correspond to real, top-level identifiers
+ * - No Webpack runtime artifacts are exposed
+ * - The export surface is fully known at build time
+ * - Unsupported patterns fail fast rather than miscompile
+ *
+ * @throws Error
+ *   If the entry module uses wildcard re-exports or otherwise exposes
+ *   a non-enumerable export surface.
+ */
 function getExportBindings(
     compilation: Compilation,
     entryModule: Module,
@@ -259,7 +306,32 @@ function getExportBindings(
     const bindings: ExportBinding[] = [];
     const exportsInfo = compilation.moduleGraph.getExportsInfo(entryModule);
 
-    for (const exportInfo of exportsInfo.orderedExports) {
+    const other = exportsInfo.otherExportsInfo;                 // Guard rail: wildcard re-exports are disallowed
+    if (other && other.provided !== false) {
+        const resource = (entryModule as any)?.resource ?? "<unknown>";
+        throw new Error(
+            [
+                "gas-demodulify: Unsupported wildcard re-export detected.",
+                "",
+                "This build uses `export * from \"./module\"`, which cannot be safely",
+                "flattened into a Google Apps Script global namespace.",
+                "",
+                "Workaround:",
+                "Replace wildcard re-exports with explicit named re-exports:",
+                "  export { foo, bar } from \"./module\";",
+                "",
+                `Entry module: ${resource}`
+            ].join("\n")
+        );
+    }
+
+    /**
+     * Webpack does not guarantee that `orderedExports` is a concrete Array.
+     * Normalize the iterable to avoid relying on undocumented internal behavior.
+     */
+    const orderedExports = Array.from(exportsInfo.orderedExports);
+
+    for (const exportInfo of orderedExports) {
         if (isSyntheticExport(exportInfo.name))
             continue;
 
@@ -305,19 +377,13 @@ function getModuleSource(
     runtime: any
 ): string {
     const codeGenResults = compilation.codeGenerationResults;
-    if (!codeGenResults) {
-        return "";
-    }
+    if (!codeGenResults) return "";
 
     const codeGen = codeGenResults.get(module, runtime);
-    if (!codeGen) {
-        return "";
-    }
+    if (!codeGen) return "";
 
     const source = codeGen.sources.get("javascript");
-    if (!source) {
-        return "";
-    }
+    if (!source) return "";
 
     return source.source().toString();
 }
@@ -330,9 +396,7 @@ function sanitizeWebpackHelpers(
     source: string,
     logger: Logger
 ): string {
-    if (!source.trim()) {
-        return source;
-    }
+    if (!source.trim()) return source;
 
     const lines = source.split(/\r?\n/);
     const kept: string[] = [];

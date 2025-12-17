@@ -425,6 +425,17 @@ The generated output will be:
 
 ##  Caveats
 
-*No  JavaScript emitted by Webpack is retained.*
+**No  JavaScript emitted by Webpack is retained.**
 
 In a gas-demodulify build, the output directory contains only GAS-safe artifacts (.gs and/or .html). Any JavaScript emitted by Webpack is deleted before output is written.
+
+**No Support for Wildcard re-exports**
+
+This is not supported:
+
+>  export * from "./module"
+
+Instead, when exposing symbols from another module, list each export explicitly:
+
+>  export { foo, bar, baz } from "./module";
+
