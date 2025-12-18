@@ -1,4 +1,5 @@
 // File: `src/plugin/CodeEmitter.ts`
+
 import type { Compilation, Module } from "webpack";
 import { sources } from "webpack";
 import dedent from "ts-dedent";
@@ -6,24 +7,123 @@ import fs from "fs";
 import path from "path";
 import { Logger } from "./Logger";
 
+/**
+ * This module contains the code responsible for flattening a single Webpack
+ * TypeScript entrypoint into a GAS-safe global namespace.
+ *
+ * Design invariants:
+ *  - exactly one TS entrypoint
+ *  - no wildcard re-exports
+ *  - no retained Webpack runtime
+ */
+
+
+
+/**
+ * Configuration options supplied to the code emitter.
+ *
+ * These options determine how symbols exported from the Webpack
+ * entry module are attached to the global namespace in the emitted,
+ * GAS-safe output.
+ */
 type EmitterOpts = {
+    /**
+     * The root global namespace under which all emitted symbols are attached.
+     *
+     * Example:
+     *   namespaceRoot: "MYADDON"
+     *
+     * Combined with `subsystem`, this forms the full namespace path:
+     *   "MYADDON.GAS", "MYADDON.UI", "MYADDON.COMMON", etc.
+     */
     namespaceRoot: string;
+
+    /**
+     * The logical subsystem being emitted.
+     *
+     * Typical values: "GAS", "UI", "COMMON".
+     * Advanced users may supply dotted paths (e.g. "UI.Dialogs").
+     */
     subsystem: string;
+
+    /**
+     * Optional override for how a default export is exposed on the namespace.
+     *
+     * If omitted, default exports are mapped to "defaultExport".
+     */
     defaultExportName?: string;
 };
 
+/**
+ * Describes a single exported symbol binding.
+ *
+ * Each binding represents a concrete assignment of the form:
+ *
+ *   globalThis.<namespace>.<exportName> = <localName>;
+ */
 type ExportBinding = {
+    /**
+     * Name used on the global namespace.
+     */
     exportName: string;
+
+    /**
+     * Local identifier defined in the transpiled module source.
+     */
     localName: string;
 };
 
+/**
+ * Describes the resolved TypeScript entrypoint selected for demodulification.
+ *
+ * This captures the minimal information needed to:
+ *  - extract transpiled source
+ *  - validate the dependency graph
+ *  - derive the final output filename
+ */
 type ResolvedEntrypoint = {
+    /**
+     * Logical entry name as defined in webpack.config.js.
+     */
     entryName: string;
+
+    /**
+     * Root Webpack module corresponding to the entrypoint source file.
+     */
     entryModule: Module;
+
+    /**
+     * Webpack runtime identifier associated with the entry chunk.
+     */
     runtime: any;
+
+    /**
+     * All chunks reachable from this entrypoint. A chunk is a Webpack-internal unit of execution that
+     * groups one or more modules together and defines how and where they run.
+     *
+     * Conceptually: Entrypoint -> Chunks (1 or more) -> Modules (many)
+     */
     chunks: any[];
 };
 
+/**
+ * Returns the function wired into Webpack’s processAssets hook.
+ *
+ * This function is registered via:
+ *
+ *   compilation.hooks.processAssets.tap(...)
+ *
+ *
+ * @see https://webpack.js.org/api/compilation-hooks/#processassets
+ *
+ * This function performs the complete demodulification pipeline:
+ *  - resolve the single TS entrypoint
+ *  - validate export invariants
+ *  - extract transpiled source
+ *  - remove Webpack helpers
+ *  - emit GAS-safe output
+ *  - delete all `.js` assets
+ */
 export function getEmitterFunc(
     logger: Logger,
     compilation: Compilation,
@@ -35,18 +135,23 @@ export function getEmitterFunc(
         const namespace = `${opts.namespaceRoot}.${opts.subsystem}`;
         logger.debug(`Computed namespace: ${namespace}`);
 
+        // Resolve the single TypeScript-authored entrypoint.
         const entry = resolveTsEntrypoint(compilation);
 
+        // Enforce export-surface determinism.
         assertNoWildcardReexports(compilation, entry);
 
+        // Extract transpiled JavaScript source for the entry module.
         const rawSource = getModuleSource(
             compilation,
             entry.entryModule,
             entry.runtime
         );
 
+        // Remove Webpack helper artifacts that GAS cannot execute.
         const sanitizedSource = sanitizeWebpackHelpers(rawSource, logger);
 
+        // Discover the explicit export surface of the entry module.
         const exportBindings = getExportBindings(
             compilation,
             entry.entryModule,
@@ -54,14 +159,17 @@ export function getEmitterFunc(
             opts
         );
 
+        // Assemble final GAS-safe output.
         const output = getGasSafeOutput(
             namespace,
             sanitizedSource,
             exportBindings
         );
 
+        // Delete all `.js` artifacts emitted by Webpack.
         cleanupJsAssets(compilation, logger);
 
+        // Output filename is derived from the Webpack entry name.
         const outputName = `${entry.entryName}.gs`;
         compilation.emitAsset(outputName, new sources.RawSource(output));
 
@@ -73,12 +181,47 @@ export function getEmitterFunc(
 // Entrypoint resolution (TS-only)
 // ======================================================
 
+/**
+ * Resolves the single TypeScript-authored entrypoint.
+ *
+ * Invariants:
+ *  - Exactly one `.ts` / `.tsx` entrypoint must exist
+ *  - JavaScript-only entrypoints are ignored
+ *
+ * Violations fail fast to avoid ambiguous GAS output.
+ *
+ * Why do we need runtime in ResolvedEntrypoint?
+ *
+ * The runtime is needed to accurately retrieve the module source code
+ * associated with the entry module. Webpack's code generation results
+ * are keyed by both the module and its runtime (see usage of codeGenerationResults in
+ * {@link getModuleSource})
+ *
+ * Why do we need chunks in ResolvedEntrypoint?
+ *
+ * Because the entry module alone is insufficient to validate the build.
+ * Chunks give us access to the entire reachable module graph, which is required to:
+ * <ul>
+ *     <li>Detect unsupported wildcard re-exports</li>
+ *     <li>Correctly associate the runtime</li>
+ * </ul>
+ */
 function resolveTsEntrypoint(
     compilation: Compilation
 ): ResolvedEntrypoint {
     const candidates: ResolvedEntrypoint[] = [];
 
     for (const [entryName, entrypoint] of compilation.entrypoints) {
+        /**
+         * Webpack entrypoints do not expose a single, stable API for accessing
+         * their associated chunks across versions.
+         *
+         * Depending on Webpack version and configuration:
+         *  - `entrypoint.chunks` may exist (iterable)
+         *  - `entrypoint.getEntrypointChunk()` may exist (singular)
+         *
+         * We normalize both cases into a concrete array below.
+         */
         const chunks: any[] = Array.from(
             (entrypoint as any).chunks ??
             (entrypoint.getEntrypointChunk
@@ -89,6 +232,25 @@ function resolveTsEntrypoint(
         for (const chunk of chunks) {
             const runtime = chunk.runtime;
             for (const m of compilation.chunkGraph.getChunkEntryModulesIterable(chunk)) {
+                /**
+                 * We identify a TypeScript entrypoint by inspecting the *resource path*
+                 * of the first module reachable from the entry chunk.
+                 *
+                 * Rationale:
+                 *  - Webpack does not label "entry modules" explicitly
+                 *  - The chunk graph may contain runtime and proxy modules
+                 *  - The resource filename is the most stable discriminator
+                 *
+                 * Once a `.ts` / `.tsx` module is found, we treat it as authoritative
+                 * for:
+                 *  - export surface discovery
+                 *  - code generation
+                 *  - output filename derivation
+                 *
+                 * We intentionally break after the first match to avoid:
+                 *  - duplicate candidate registration
+                 *  - ambiguous multi-module entrypoints
+                 */
                 const res = (m as any)?.resource;
                 if (typeof res === "string" && (res.endsWith(".ts") || res.endsWith(".tsx"))) {
                     candidates.push({
@@ -123,6 +285,15 @@ function resolveTsEntrypoint(
 // Wildcard re-export guard
 // ======================================================
 
+/**
+ * Rejects wildcard re-exports anywhere in the entry’s dependency graph.
+ *
+ * Unsupported:
+ *  - `export * from "./module"`
+ *  - `export * as ns from "./module"`
+ *
+ * GAS requires a fully explicit, statically-known global surface.
+ */
 function assertNoWildcardReexports(
     compilation: Compilation,
     entry: ResolvedEntrypoint
@@ -134,7 +305,7 @@ function assertNoWildcardReexports(
         for (const module of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
             const resource = (module as any)?.resource;
 
-            // Prefer source-level detection for TS files
+            // Prefer source-level detection for TS-authored files.
             if (typeof resource === "string" && (resource.endsWith(".ts") || resource.endsWith(".tsx"))) {
                 const abs = path.isAbsolute(resource)
                     ? resource
@@ -151,7 +322,7 @@ function assertNoWildcardReexports(
                 }
             }
 
-            // Fallback: webpack moduleGraph signal (synthetic proxy modules)
+            // Fallback: Webpack moduleGraph signal (synthetic proxy modules).
             const exportsInfo =
                 compilation.moduleGraph.getExportsInfo(module);
             const other = exportsInfo.otherExportsInfo;
@@ -186,6 +357,13 @@ function unsupportedWildcardError(details?: string): Error {
 // Export surface
 // ======================================================
 
+/**
+ * Discovers the explicit export surface of the entry module.
+ *
+ * Notes:
+ *  - Synthetic exports (e.g. "__esModule") are ignored
+ *  - Default exports are mapped deterministically
+ */
 function getExportBindings(
     compilation: Compilation,
     entryModule: Module,
@@ -250,6 +428,10 @@ function getGasSafeOutput(
     `;
 }
 
+/**
+ * Retrieves Webpack’s generated JavaScript source for a module
+ * without retaining the Webpack runtime wrapper.
+ */
 function getModuleSource(
     compilation: Compilation,
     module: Module,
@@ -268,6 +450,10 @@ function getModuleSource(
     return source?.source?.() ? String(source.source()) : "";
 }
 
+/**
+ * Removes Webpack codegen helper artifacts from the module body.
+ * Operates conservatively at the line level.
+ */
 function sanitizeWebpackHelpers(
     source: string,
     logger: Logger
@@ -294,6 +480,9 @@ function sanitizeWebpackHelpers(
     return kept.join("\n").trim();
 }
 
+/**
+ * Emits a GAS-safe hierarchical namespace initializer.
+ */
 function renderNamespaceInit(namespace: string): string {
     return dedent`
         // Namespace initialization
@@ -307,6 +496,12 @@ function renderNamespaceInit(namespace: string): string {
     `;
 }
 
+/**
+ * Deletes all `.js` assets emitted by Webpack.
+ *
+ * In gas-demodulify builds, JavaScript output is transient and must not
+ * be written to disk.
+ */
 function cleanupJsAssets(
     compilation: Compilation,
     logger: Logger
