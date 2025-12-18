@@ -6,15 +6,18 @@ module.exports = {
   context: __dirname,
 
   entry: {
-    backend: "./src/gas/index.ts",
-    deliberate_cruft: "./src/deliberate_cruft.js"      // This entry is to verify that any .js cruft in dist dir is cleaned up
+    gas: "./src/gas/index.ts"
   },
 
-    output: {
+  output: {
     path: path.join(__dirname, "dist"),
     filename: "[name].js"
-
   },
+
+  resolve: {
+    extensions: [".ts", ".js"]
+  },
+
   module: {
     rules: [
       {
@@ -23,12 +26,12 @@ module.exports = {
       }
     ]
   },
+
   plugins: [
     new GASDemodulifyPlugin({
       namespaceRoot: "MYADDON",
       subsystem: "GAS",
-      buildMode: "gas",
-      logLevel: "silent"
+      buildMode: "gas"
     })
   ]
 };

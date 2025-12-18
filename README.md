@@ -408,11 +408,11 @@ The generated output will be:
 #### *logLevel*
 
 
-| Option value         | Effect                           |
-|----------------------|----------------------------------|
-| omitted / "silent"	   | no output                    |
-| "info"               | High-level lifecycle messages    |
-| "debug"              | Full internal diagnostics        |      
+| Option value         | Effect                                                                 |
+|----------------------|------------------------------------------------------------------------|
+| omitted / "silent"	   | No output. Anything other than 'info' or 'debug' is considered 'silent' |
+| "info"               | High-level lifecycle messages                                          |
+| "debug"              | Full internal diagnostics                                              |      
 
 
 

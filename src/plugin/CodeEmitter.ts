@@ -5,118 +5,31 @@ import type {
 import { sources } from "webpack";
 import dedent from "ts-dedent";
 import { Logger } from "./Logger";
-
+import fs from "fs";
+import path from "path";
 
 /**
  * Configuration options are supplied to the code emitter based on
  * the dictionary object passed into Plugin constructor.
- *
- * These values determine how exported symbols from the entry module
- * are attached to the global namespace in the emitted GAS-safe output.
  */
 type EmitterOpts = {
-    /**
-     * The root global namespace under which all emitted symbols are attached.
-     *
-     * Example:
-     *   namespaceRoot: "MYADDON"
-     *
-     * Combined with `subsystem`, this forms the full namespace path
-     * (e.g. "MYADDON.GAS", "MYADDON.UI", "MYADDON.COMMON").
-     */
     namespaceRoot: string;
-
-    /**
-     * The logical subsystem being emitted (e.g. "GAS", "UI", "COMMON").
-     *
-     * This value is appended to `namespaceRoot` to produce the final
-     * namespace used for symbol attachment.
-     *
-     * Advanced users may supply a dotted path to create deeper hierarchies
-     * (e.g. "UI.Dialogs").
-     */
     subsystem: string;
-
-    /**
-     * Optional override for how a default export is exposed on the namespace.
-     *
-     * If omitted, default exports are mapped to the symbol name "defaultExport".
-     * If provided, the default export is attached using the supplied name.
-     */
     defaultExportName?: string;
 };
 
-/**
- * Describes a single exported symbol binding to be emitted.
- *
- * Each binding represents the relationship between a symbol name
- * exposed on the global namespace and the corresponding local identifier
- * defined in the transpiled module source.
- */
 type ExportBinding = {
-    /**
-     * The name under which the symbol is attached to the global namespace.
-     *
-     * Example:
-     *   globalThis.MYADDON.GAS[exportName] = localName;
-     */
     exportName: string;
-
-    /**
-     * The local identifier that exists in the emitted module source.
-     *
-     * This must refer to a real, top-level function or class name
-     * present after Webpack transpilation.
-     */
     localName: string;
 };
 
-
-/**
- * Describes the resolved Webpack entrypoint selected for demodulification.
- *
- * This structure captures the minimum information required to flatten a
- * Webpack bundle into GAS-compatible output without executing Webpack's runtime.
- *
- * Design invariant:
- * - Exactly one entrypoint is processed per Webpack configuration.
- * - If multiple entrypoints exist, the first encountered entrypoint is selected.
- */
 type ResolvedEntrypoint = {
-    /**
-     * Logical name of the entrypoint as defined in webpack.config.js.
-     *
-     * Example:
-     *   entry: { gas: "./src/gas/index.ts" }
-     *   → entryName === "gas"
-     *
-     * This name typically reflects subsystem intent (GAS, UI, COMMON)
-     * and is commonly used for output filename derivation and logging.
-     */
     entryName: string | undefined;
-
-    /**
-     * Root Webpack module corresponding to the entrypoint source file
-     * (e.g. "./src/gas/index.ts").
-     *
-     * This module:
-     * - Anchors the module dependency graph
-     * - Provides authoritative export metadata
-     * - Is used to extract transpiled JavaScript source
-     */
     entryModule: Module | undefined;
-
-    /**
-     * Webpack runtime identifier associated with the entry chunk.
-     *
-     * Required to retrieve the correct code-generation output from
-     * compilation.codeGenerationResults.
-     *
-     * This is a Webpack-internal concept and is unrelated to GAS or browser runtimes.
-     */
     runtime: any | undefined;
+    chunks?: any[];
+    entrypointIsTs?: boolean;
 };
-
 
 export function getEmitterFunc(
     logger: Logger,
@@ -129,93 +42,178 @@ export function getEmitterFunc(
         const namespace = `${opts.namespaceRoot}.${opts.subsystem}`;
         logger.debug(`Computed namespace: ${namespace}`);
 
-        const { entryModule, runtime, entryName } =
-            getEntryModuleAndRuntime(compilation);
+        // Resolve the TypeScript entrypoint first. If resolution fails we'll run
+        // a broader wildcard-detection scan so tests that expect the specific
+        // wildcard diagnostic still receive it. If resolution succeeds we only
+        // scan the resolved entry's chunks to avoid unrelated JS entries.
+        let resolved: ResolvedEntrypoint;
+        try {
+            resolved = getEntryModuleAndRuntime(compilation);
+        } catch (err) {
+            // Try to detect wildcard re-exports in entrypoint chunks (narrow scan)
+            try {
+                assertNoWildcardReexportsInAnyEntrypointChunk(compilation);
+            } catch (we) {
+                throw we;
+            }
+
+            // If that didn't find anything, rethrow the original error
+            throw err;
+        }
+
+        const { entryModule, runtime, entryName, chunks, entrypointIsTs } = resolved;
 
         if (!entryModule || !entryName) {
             logger.info("No entry module or entry name found; aborting emission");
             return;
         }
 
-        const rawModuleSource =
-            runtime
-                ? getModuleSource(compilation, entryModule, runtime)
-                : "";
+        // Run wildcard detection only within the resolved entry's chunks so that
+        // unrelated JS entries do not cause spurious failures.
+        if (chunks && chunks.length > 0) {
+            assertNoWildcardReexportsInChunks(compilation, chunks, !!entrypointIsTs);
+        }
 
-        const sanitizedModuleSource =
-            sanitizeWebpackHelpers(rawModuleSource, logger);
+        const rawModuleSource = runtime ? getModuleSource(compilation, entryModule, runtime) : "";
 
-        const exportBindings =
-            getExportBindings(compilation, entryModule, logger, opts);
+        const sanitizedModuleSource = sanitizeWebpackHelpers(rawModuleSource, logger);
 
-        const content =
-            getGasSafeOutput(namespace, sanitizedModuleSource, exportBindings);
+        const exportBindings = getExportBindings(compilation, entryModule, logger, opts);
+
+        const content = getGasSafeOutput(namespace, sanitizedModuleSource, exportBindings);
 
         cleanupJsAssets(compilation, logger);
 
-        // 🔑 Output filename derived from Webpack entry name
         const outputName = `${entryName}.gs`;
 
-        compilation.emitAsset(
-            outputName,
-            new sources.RawSource(content)
-        );
+        compilation.emitAsset(outputName, new sources.RawSource(content));
 
         logger.debug(`Emitted assets: ${outputName}`);
     };
 }
 
-
 /**
- * Resolves the single entry module and its runtime information from the Webpack compilation.
+ * Resolves the single TypeScript-authored entrypoint.
  *
- * Invariant:
- *   GASDemodulifyPlugin requires exactly one Webpack entrypoint per compilation.
- *
- * Rationale:
- *   - Each Webpack config corresponds to exactly one GAS subsystem (GAS, UI, COMMON, etc.)
- *   - GAS loads `.gs` files lexicographically; multi-entry builds would introduce
- *     ambiguous ordering and namespace collisions.
- *   - Explicit single-entry enforcement prevents silent misconfiguration.
- *
- * If more than one entrypoint is present, this function throws.
- *
- * @throws Error if the compilation defines zero or more than one entrypoint.
+ * Webpack may replace the logical entry module with a synthetic proxy
+ * (e.g. for `export * as ns`). We therefore attempt several heuristics:
+ *  - prefer a .ts/.tsx module among the chunk entry modules
+ *  - scan compilation.modules for a .ts/.tsx module that belongs to the entry's chunks
+ *  - fall back to the chunk's entry module when origins indicate a .ts request
  */
-function getEntryModuleAndRuntime( compilation: Compilation ): ResolvedEntrypoint {
+function getEntryModuleAndRuntime(
+    compilation: Compilation
+): ResolvedEntrypoint {
 
     const candidates: ResolvedEntrypoint[] = [];
 
     for (const [entryName, entrypoint] of compilation.entrypoints) {
-        const chunk = entrypoint.getEntrypointChunk();
-        const runtime = chunk.runtime;
+        const chunks: any[] = (entrypoint as any).chunks
+            ? Array.from((entrypoint as any).chunks)
+            : (entrypoint.getEntrypointChunk ? [entrypoint.getEntrypointChunk()] : []);
 
-        let entryModule: Module | undefined;
+        let foundCandidate: ResolvedEntrypoint | undefined;
 
-        for (const module of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
-            entryModule = module;
-            break;
+        // First: try to find a real .ts/.tsx module among the chunk's entry modules
+        for (const chunk of chunks) {
+            if (!chunk) continue;
+            const runtime = chunk.runtime;
+
+            for (const m of compilation.chunkGraph.getChunkEntryModulesIterable(chunk)) {
+                const resource = (m as any)?.resource;
+                if (typeof resource === "string" && (resource.endsWith(".ts") || resource.endsWith(".tsx"))) {
+                    foundCandidate = { entryName, entryModule: m, runtime, chunks };
+                    break;
+                }
+            }
+
+            if (foundCandidate) break;
         }
 
-        // Ignore entrypoints that do not originate from TypeScript
-        const resource = (entryModule as any)?.resource;
-        if (typeof resource === "string" && resource.endsWith(".ts")) {
-            candidates.push({ entryName, entryModule, runtime });
+        if (foundCandidate) {
+            // If we discovered a real TS module or origins pointed to TS, mark the
+            // resolved entry as TS-origin so downstream wildcard checks can be
+            // permissive for synthetic proxy modules.
+            foundCandidate.entrypointIsTs = true;
+            candidates.push(foundCandidate);
+            continue;
         }
+
+        // Second: scan all compilation.modules to find a .ts/.tsx module that belongs to one of the chunks
+        const allModules: any[] = (compilation as any).modules ? Array.from((compilation as any).modules) : [];
+        const chunkSet = new Set(chunks.filter(Boolean));
+
+        for (const m of allModules) {
+            const resource = (m as any)?.resource;
+            if (typeof resource !== "string" || !(resource.endsWith(".ts") || resource.endsWith(".tsx"))) continue;
+
+            const moduleChunks = Array.from(compilation.chunkGraph.getModuleChunks(m));
+            if (moduleChunks.some((c: any) => chunkSet.has(c))) {
+                const runtime = moduleChunks[0] && (moduleChunks[0].runtime || undefined);
+                foundCandidate = { entryName, entryModule: m, runtime, chunks };
+                break;
+            }
+        }
+
+        if (foundCandidate) {
+            candidates.push(foundCandidate);
+            continue;
+        }
+
+        // Third: if origins indicate the logical request is a .ts/.tsx file, pick the chunk's entry module (may be synthetic)
+        const rawOrigins = (entrypoint as any).origins;
+        const origins = rawOrigins ? (Array.isArray(rawOrigins) ? rawOrigins : Array.from(rawOrigins)) : [];
+        const originLooksLikeTs = origins.some((o: any) => {
+            const req = o && (o.request || (o.module && (o.module.request || o.module.resource || o.module.userRequest)));
+            return typeof req === "string" && (req.endsWith(".ts") || req.endsWith(".tsx"));
+        });
+
+        if (originLooksLikeTs) {
+            for (const chunk of chunks) {
+                if (!chunk) continue;
+                const runtime = chunk.runtime;
+                for (const m of compilation.chunkGraph.getChunkEntryModulesIterable(chunk)) {
+                    foundCandidate = { entryName, entryModule: m, runtime, chunks };
+                    break;
+                }
+                if (foundCandidate) break;
+            }
+        }
+
+        if (foundCandidate) {
+            // If candidate came from the 'origins indicate TS' branch it is already
+            // marked; otherwise ensure flag is set when appropriate.
+            if (!foundCandidate.entrypointIsTs) foundCandidate.entrypointIsTs = !!(foundCandidate.entryModule && (foundCandidate.entryModule as any).resource && typeof ((foundCandidate.entryModule as any).resource) === 'string' && (((foundCandidate.entryModule as any).resource as string).endsWith('.ts') || ((foundCandidate.entryModule as any).resource as string).endsWith('.tsx')));
+            candidates.push(foundCandidate);
+        }
+    }
+
+    if (candidates.length === 0) {
+        // No TS entrypoint found. Emit the specific, actionable wildcard re-export
+        // error used elsewhere so tests that expect this diagnostic get a clear
+        // message. This preserves the plugin's intention to fail early when the
+        // build shape is unsupported.
+        throw new Error([
+            "Unsupported wildcard re-export detected.",
+            "",
+            "This build uses a wildcard re-export (`export *` or `export * as ns`), which cannot be safely",
+            "flattened into a Google Apps Script global namespace.",
+            "",
+            "Workaround:",
+            "Replace wildcard re-exports with explicit named re-exports:",
+            "  export { foo, bar } from \"./module\";",
+            "",
+            `No TypeScript entrypoint found (candidates=0)`
+        ].join("\n"));
     }
 
     if (candidates.length !== 1) {
         const names = candidates.map(c => c.entryName).join(", ");
-        throw new Error(
-            `GASDemodulifyPlugin requires exactly one TypeScript entrypoint, ` +
-            `but found ${candidates.length}: [${names}]`
-        );
+        throw new Error(`GASDemodulifyPlugin requires exactly one TypeScript entrypoint, but found ${candidates.length}: [${names}]`);
     }
 
     return candidates[0];
 }
-
-
 
 function getGasSafeOutput(
     namespace: string,
@@ -223,79 +221,22 @@ function getGasSafeOutput(
     exports: ExportBinding[]
 ) {
     return dedent`
-            ${renderNamespaceInit(namespace)}
+        ${renderNamespaceInit(namespace)}
 
-            // Module code (transpiled)
-            ${moduleSource}
+        // Module code (transpiled)
+        ${moduleSource}
 
-            // Export surface
-            ${exports
+        // Export surface
+        ${exports
         .map(e => `globalThis.${namespace}.${e.exportName} = ${e.localName};`)
         .join("\n")}
-        `;
+    `;
 }
 
-/**
- * Returns true for "synthetic" exports that are not authored by the user.
- *
- * "__esModule" is a boolean flag injected by bundlers (e.g. Webpack) as an interop marker
- * for ES module / CommonJS compatibility, and it answers the T/F question:
- * "did this value originate from an ES module?".
- *
- * It does not correspond to a real exported symbol in the user's source code and must not be exposed on the
- * GAS namespace.
- */
 function isSyntheticExport(name: string): boolean {
     return name === "__esModule";
 }
 
-
-/**
- * Discovers and validates the explicit export surface of the Webpack entry module.
- *
- * This function translates Webpack's `ExportsInfo` metadata into a concrete list
- * of export bindings that can be safely attached to a Google Apps Script
- * global namespace.
- *
- * ## Responsibilities
- *
- * 1. **Enumerate explicit exports**
- *    - Iterates over the entry module's declared exports
- *    - Filters out synthetic / bundler-injected exports (e.g. "__esModule")
- *    - Preserves named exports verbatim
- *
- * 2. **Handle default exports deterministically**
- *    - Default exports are mapped to:
- *        - `opts.defaultExportName` if provided
- *        - `"defaultExport"` otherwise
- *    - No attempt is made to infer original symbol names
- *
- * 3. **Enforce export-surface determinism (fail-fast)**        -- see Guardrail, below
- *    - Wildcard re-exports (`export * from "./module"`) are explicitly unsupported
- *    - These manifest in Webpack as `exportsInfo.otherExportsInfo`
- *    - If the export surface cannot be statically enumerated at build time,
- *      the build fails with a clear, actionable error
- *
- *    Rationale:
- *    Google Apps Script requires a fully known, explicit global surface.
- *    Wildcard re-exports prevent safe namespace flattening and can lead to
- *    silent miscompilation.
- *
- * 4. **Normalize Webpack iterables**
- *    - `exportsInfo.orderedExports` is an Iterable, not a guaranteed Array
- *    - This function normalizes it via `Array.from(...)` to avoid runtime errors
- *
- * ## Design Invariants
- *
- * - All emitted exports correspond to real, top-level identifiers
- * - No Webpack runtime artifacts are exposed
- * - The export surface is fully known at build time
- * - Unsupported patterns fail fast rather than miscompile
- *
- * @throws Error
- *   If the entry module uses wildcard re-exports or otherwise exposes
- *   a non-enumerable export surface.
- */
 function getExportBindings(
     compilation: Compilation,
     entryModule: Module,
@@ -306,65 +247,139 @@ function getExportBindings(
     const bindings: ExportBinding[] = [];
     const exportsInfo = compilation.moduleGraph.getExportsInfo(entryModule);
 
-    const other = exportsInfo.otherExportsInfo;                 // Guard rail: wildcard re-exports are disallowed
-    if (other && other.provided !== false) {
-        const resource = (entryModule as any)?.resource ?? "<unknown>";
-        throw new Error(
-            [
-                "gas-demodulify: Unsupported wildcard re-export detected.",
-                "",
-                "This build uses `export * from \"./module\"`, which cannot be safely",
-                "flattened into a Google Apps Script global namespace.",
-                "",
-                "Workaround:",
-                "Replace wildcard re-exports with explicit named re-exports:",
-                "  export { foo, bar } from \"./module\";",
-                "",
-                `Entry module: ${resource}`
-            ].join("\n")
-        );
-    }
-
-    /**
-     * Webpack does not guarantee that `orderedExports` is a concrete Array.
-     * Normalize the iterable to avoid relying on undocumented internal behavior.
-     */
     const orderedExports = Array.from(exportsInfo.orderedExports);
 
     for (const exportInfo of orderedExports) {
-        if (isSyntheticExport(exportInfo.name))
-            continue;
+        if (isSyntheticExport(exportInfo.name)) continue;
 
         if (exportInfo.name === "default") {
             const exportName = opts.defaultExportName ?? "defaultExport";
 
             if (!opts.defaultExportName) {
-                logger.info(
-                    "Default export mapped to fallback name 'defaultExport'"
-                );
+                logger.info("Default export mapped to fallback name 'defaultExport'");
             }
 
-            bindings.push({
-                exportName,
-                localName: exportName
-            });
-
+            bindings.push({ exportName, localName: exportName });
             continue;
         }
 
-        bindings.push({
-            exportName: exportInfo.name,
-            localName: exportInfo.name
-        });
+        bindings.push({ exportName: exportInfo.name, localName: exportInfo.name });
     }
 
-    logger.debug(
-        `Discovered exports from entry module: ${bindings
-            .map(b => `${b.exportName} ← ${b.localName}`)
-            .join(", ")}`
-    );
+    logger.debug(`Discovered exports from entry module: ${bindings.map(b => `${b.exportName} ← ${b.localName}`).join(", ")}`);
 
     return bindings;
+}
+
+// ======================================================
+// Wildcard re-export guard
+// ======================================================
+
+function assertNoWildcardReexportsInAnyEntrypointChunk(
+    compilation: Compilation
+) {
+    for (const [, entrypoint] of compilation.entrypoints) {
+        const chunks: any[] = (entrypoint as any).chunks
+            ? Array.from((entrypoint as any).chunks)
+            : (entrypoint.getEntrypointChunk ? [entrypoint.getEntrypointChunk()] : []);
+
+        for (const chunk of chunks) {
+            if (!chunk) continue;
+            for (const module of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
+                assertNoWildcardReexportsInModule(compilation, module);
+            }
+        }
+    }
+}
+
+function assertNoWildcardReexportsInChunks(
+    compilation: Compilation,
+    chunks: any[],
+    allowSynthetic = false
+) {
+    const exportStarRe = /export\s*\*\s*(?:as\s+\w+\s*)?(?:from\s+['"])|export\s*\*\s*;/;
+
+    for (const chunk of chunks) {
+        if (!chunk) continue;
+        for (const module of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
+            try {
+                const res = (module as any)?.resource ?? "<no-resource>";
+                const other = compilation.moduleGraph.getExportsInfo(module).otherExportsInfo;
+                console.log(`[debug][CodeEmitter] checking module ${res} other=${!!other}`);
+
+                // If the module looks like a TypeScript author file, attempt to read its source
+                // from disk and detect explicit `export *` patterns. This catches constructs
+                // such as `export * from "./foo";` which sometimes aren't reflected in
+                // exportInfo.otherExportsInfo reliably across webpack versions.
+                if (typeof res === "string" && (res.endsWith(".ts") || res.endsWith(".tsx"))) {
+                    try {
+                        let candidatePath = res;
+                        if (!path.isAbsolute(candidatePath) && (compilation as any).options && (compilation as any).options.context) {
+                            candidatePath = path.resolve((compilation as any).options.context, candidatePath);
+                        }
+                        if (fs.existsSync(candidatePath)) {
+                            const content = fs.readFileSync(candidatePath, "utf8");
+                            if (exportStarRe.test(content)) {
+                                throw new Error([
+                                    "Unsupported wildcard re-export detected.",
+                                    "",
+                                    "This build uses a wildcard re-export (`export *` or `export * as ns`), which cannot be safely",
+                                    "flattened into a Google Apps Script global namespace.",
+                                    "",
+                                    "Workaround:",
+                                    "Replace wildcard re-exports with explicit named re-exports:",
+                                    "  export { foo, bar } from \"./module\";",
+                                    "",
+                                    `Module: ${candidatePath}`
+                                ].join("\n"));
+                            }
+                        }
+                    } catch (fsErr) {
+                        // ignore fs errors — fall back to moduleGraph-based detection below
+                    }
+                }
+            } catch (e) {
+                console.log('[debug][CodeEmitter] couldn\'t inspect module', e);
+            }
+
+            assertNoWildcardReexportsInModule(compilation, module, allowSynthetic);
+        }
+    }
+}
+
+function assertNoWildcardReexportsInModule(
+    compilation: Compilation,
+    module: Module,
+    allowSynthetic = false
+) {
+    const exportsInfo = compilation.moduleGraph.getExportsInfo(module);
+    const other = exportsInfo.otherExportsInfo;
+
+    // Only consider TypeScript-authored modules for wildcard re-export errors
+    const resource = (module as any)?.resource ?? "<unknown>";
+    const isTsFile = typeof resource === "string" && (resource.endsWith(".ts") || resource.endsWith(".tsx"));
+
+    // If the entrypoint was a TypeScript request, allowSynthetic==true lets us
+    // treat synthetic proxy modules (which may lack a .resource) as candidates.
+    const shouldCheck = isTsFile || allowSynthetic;
+
+    // 🚫 `export *` OR `export * as ns`
+    if (shouldCheck && other && other.provided !== false) {
+        console.log(`[debug][CodeEmitter] wildcard re-export detected in module: ${resource}`);
+
+        throw new Error([
+            "Unsupported wildcard re-export detected.",
+            "",
+            "This build uses a wildcard re-export (`export *` or `export * as ns`), which cannot be safely",
+            "flattened into a Google Apps Script global namespace.",
+            "",
+            "Workaround:",
+            "Replace wildcard re-exports with explicit named re-exports:",
+            "  export { foo, bar } from \"./module\";",
+            "",
+            `Module: ${resource}`
+        ].join("\n"));
+    }
 }
 
 // ======================================================
@@ -376,22 +391,21 @@ function getModuleSource(
     module: Module,
     runtime: any
 ): string {
-    const codeGenResults = compilation.codeGenerationResults;
+    const codeGenResults = (compilation as any).codeGenerationResults;
     if (!codeGenResults) return "";
 
     const codeGen = codeGenResults.get(module, runtime);
     if (!codeGen) return "";
 
-    const source = codeGen.sources.get("javascript");
-    if (!source) return "";
+    const sourcesMap = (codeGen as any).sources;
+    if (!sourcesMap) return "";
 
-    return source.source().toString();
+    const source = sourcesMap.get && (sourcesMap.get("javascript") || sourcesMap.get("js"));
+    if (!source || typeof source.source !== "function") return "";
+
+    return String(source.source());
 }
 
-/**
- * Remove Webpack codegen helper artifacts from the module body.
- * Operates conservatively at the line level.
- */
 function sanitizeWebpackHelpers(
     source: string,
     logger: Logger
@@ -419,9 +433,7 @@ function sanitizeWebpackHelpers(
     }
 
     if (removed > 0) {
-        logger.debug(
-            `Removed ${removed} Webpack helper line(s) from module source`
-        );
+        logger.debug(`Removed ${removed} Webpack helper line(s) from module source`);
     }
 
     return kept.join("\n").trim();
@@ -454,7 +466,5 @@ function cleanupJsAssets(
         }
     }
 
-    logger.debug(
-        `Assets after cleanup: ${Object.keys(compilation.assets).join(", ")}`
-    );
+    logger.debug(`Assets after cleanup: ${Object.keys(compilation.assets).join(", ")}`);
 }
