@@ -17,8 +17,6 @@ import { Logger } from "./Logger";
  *  - no retained Webpack runtime
  */
 
-
-
 /**
  * Configuration options supplied to the code emitter.
  *
@@ -113,7 +111,6 @@ type ResolvedEntrypoint = {
  *
  *   compilation.hooks.processAssets.tap(...)
  *
- *
  * @see https://webpack.js.org/api/compilation-hooks/#processassets
  *
  * This function performs the complete demodulification pipeline:
@@ -136,7 +133,7 @@ export function getEmitterFunc(
         logger.debug(`Computed namespace: ${namespace}`);
 
         // Resolve the single TypeScript-authored entrypoint.
-        const entry = resolveTsEntrypoint(compilation);
+        const entry = resolveTsEntrypoint(compilation, logger);
 
         // Enforce export-surface determinism.
         assertNoWildcardReexports(compilation, entry);
@@ -207,11 +204,16 @@ export function getEmitterFunc(
  * </ul>
  */
 function resolveTsEntrypoint(
-    compilation: Compilation
+    compilation: Compilation,
+    logger: Logger
 ): ResolvedEntrypoint {
+    logger.debug("Resolving TypeScript entrypoint");
+
     const candidates: ResolvedEntrypoint[] = [];
 
     for (const [entryName, entrypoint] of compilation.entrypoints) {
+        logger.debug(`Inspecting entrypoint '${entryName}'`);
+
         /**
          * Webpack entrypoints do not expose a single, stable API for accessing
          * their associated chunks across versions.
@@ -229,8 +231,11 @@ function resolveTsEntrypoint(
                 : [])
         );
 
+        logger.debug( `Entrypoint '${entryName}' has ${chunks.length} chunk(s)` );
+
         for (const chunk of chunks) {
             const runtime = chunk.runtime;
+
             for (const m of compilation.chunkGraph.getChunkEntryModulesIterable(chunk)) {
                 /**
                  * We identify a TypeScript entrypoint by inspecting the *resource path*
@@ -253,6 +258,8 @@ function resolveTsEntrypoint(
                  */
                 const res = (m as any)?.resource;
                 if (typeof res === "string" && (res.endsWith(".ts") || res.endsWith(".tsx"))) {
+                    logger.debug( `Found TS entry module for '${entryName}': ${res}` );
+
                     candidates.push({
                         entryName,
                         entryModule: m,
@@ -266,6 +273,7 @@ function resolveTsEntrypoint(
     }
 
     if (candidates.length === 0) {
+        logger.debug("No TypeScript entrypoints detected");
         throw unsupportedWildcardError(
             "No TypeScript entrypoint found"
         );
@@ -273,12 +281,16 @@ function resolveTsEntrypoint(
 
     if (candidates.length > 1) {
         const names = candidates.map(c => c.entryName).join(", ");
+        logger.debug(`Multiple TS entrypoints detected: ${names}`);
         throw new Error(
             `GASDemodulifyPlugin requires exactly one TypeScript entrypoint, but found ${candidates.length}: [${names}]`
         );
     }
 
-    return candidates[0];
+    const resolved = candidates[0];
+    logger.debug( `Resolved entrypoint '${resolved.entryName}' with ${resolved.chunks.length} chunk(s)` );
+
+    return resolved;
 }
 
 // ======================================================
