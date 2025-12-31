@@ -78,7 +78,7 @@ export interface GASDemodulifyOptions {
  *  - All substantive transformation logic lives in CodeEmitter.ts
  *  - This keeps Webpack lifecycle wiring separate from code-generation logic
  */
-export class GASDemodulifyPlugin {
+class GASDemodulifyPlugin {
     private options: GASDemodulifyOptions;
 
     /**
@@ -152,3 +152,6 @@ export class GASDemodulifyPlugin {
         );
     }
 }
+
+
+module.exports = GASDemodulifyPlugin;

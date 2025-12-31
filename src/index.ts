@@ -1,3 +1,2 @@
-import { GASDemodulifyPlugin } from "./plugin/GASDemodulifyPlugin";
-
-export default GASDemodulifyPlugin;
+import GASDemodulifyPlugin = require("./plugin/GASDemodulifyPlugin");
+export = GASDemodulifyPlugin;

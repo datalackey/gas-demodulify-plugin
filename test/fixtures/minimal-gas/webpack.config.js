@@ -1,5 +1,5 @@
 const path = require("path");
-const GASDemodulifyPlugin = require("../../../dist").default;
+const GASDemodulifyPlugin = require("../../../dist")
 
 module.exports = {
   mode: "production",

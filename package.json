@@ -6,12 +6,13 @@
   "types": "dist/index.d.ts",
   "license": "MIT",
   "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
+    "compile": "tsc",
+    "compile:watch": "tsc --watch",
+    "pretest": "npm run compile",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:full": "npm run build && npm test",
-    "build:plugin:package": "node scripts/build-plugin-package.js"
+    "build": "rm -rf dist && npm run compile && npm run test",
+    "release": "npm run build && node scripts/build-plugin-package.js"
   },
   "peerDependencies": {
     "webpack": "^5.0.0"

@@ -194,6 +194,13 @@ export function getEmitterFunc(
  *
  * Violations fail fast to avoid ambiguous GAS output.
  *
+ * What do we mean by  'runtime' ?
+ *
+ * The value of runtime is partially influenced by the target environment, but it is not
+ * equal to the target and not determined by it alone. More acurately  runtime identifies
+ * a Webpack bundle execution context. That context may differ based on target
+ * environment, entrypoint, or both.
+ *
  * Why do we need runtime in ResolvedEntrypoint?
  *
  * The runtime is needed to accurately retrieve the module source code
