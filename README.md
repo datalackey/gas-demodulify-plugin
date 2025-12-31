@@ -10,7 +10,7 @@ system for such extensions. Most existing Webpack-based tooling and GAS starter 
 simple codebases and flat scripts, but fail when applied to more
 complex architectures.  
 
-So, if your code base has multiple subsystems, and if you want your emitted GAS code to 
+So, if your (Typescript) code base has multiple subsystems, and if you want your emitted GAS code to 
 isolate code for each subsystem into its own namespace, and you are horrified at the prospect of using brittle 
 search and replace on strings to post-modify output, then this plugin is for you. 
 When generating code `gas-demodulify` completely discards Webpack’s emitted runtime artifacts 
@@ -21,8 +21,8 @@ the [HtmlService](https://developers.google.com/apps-script/reference/html/html-
 delivery model using:
 
 - user supplied namespace configuration metadata 
-- resolved, transpiled module sources provided by Webpack’s compilation pipeline 
- (after dependency resolution and type-checking, but before runtime execution)
+- transpiled module sources provided by Webpack’s compilation pipeline 
+ (after module dependency resolution and type-checking, but before runtime execution)
 
 
 

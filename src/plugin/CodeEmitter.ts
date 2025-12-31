@@ -24,7 +24,7 @@ import { Logger } from "./Logger";
  * entry module are attached to the global namespace in the emitted,
  * GAS-safe output.
  */
-type EmitterOpts = {
+export type EmitterOpts = {
     /**
      * The root global namespace under which all emitted symbols are attached.
      *
@@ -50,6 +50,13 @@ type EmitterOpts = {
      * If omitted, default exports are mapped to "defaultExport".
      */
     defaultExportName?: string;
+
+    /**
+     * Optional, explicit log level. Production code does not read process.env;
+     * tests may supply this (test harness can read LOGLEVEL once and pass it).
+     * Accepted values (case-insensitive): "debug", "info", or undefined.
+     */
+    logLevel?: string;
 };
 
 /**
@@ -164,7 +171,7 @@ export function getEmitterFunc(
         );
 
         // Delete all `.js` artifacts emitted by Webpack.
-        cleanupJsAssets(compilation, logger);
+        cleanupJsAssets(compilation);
 
         // Output filename is derived from the Webpack entry name.
         const outputName = `${entry.entryName}.gs`;
@@ -310,8 +317,11 @@ function assertNoWildcardReexports(
     compilation: Compilation,
     entry: ResolvedEntrypoint
 ) {
-    const exportStarRe =
-        /export\s*\*\s*(?:as\s+\w+\s*)?(?:from\s+['"])|export\s*\*\s*;/;
+    // Match wildcard re-exports such as:
+    //   export * from "./module";
+    //   export * as ns from "./module";
+    //   export *;
+    const exportStarRe = /export\s*\*\s*(?:as\s+\w+\s*)?(?:from\s+['"]|;)/;
 
     for (const chunk of entry.chunks) {
         for (const module of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
@@ -509,14 +519,13 @@ function renderNamespaceInit(namespace: string): string {
 }
 
 /**
- * Deletes all `.js` assets emitted by Webpack.
- *
- * In gas-demodulify builds, JavaScript output is transient and must not
- * be written to disk.
- */
+  * Deletes all `.js` assets emitted by Webpack.
+  *
+  * In gas-demodulify builds, JavaScript output is transient and must not
+  * be written to disk.
+  */
 function cleanupJsAssets(
-    compilation: Compilation,
-    logger: Logger
+    compilation: Compilation
 ) {
     for (const name of Object.keys(compilation.assets)) {
         if (name.endsWith(".js")) {

@@ -24,6 +24,6 @@ export function createLogger(level: LogLevel | undefined): Logger {
             if (debugEnabled) {
                 console.log(`[gas-demodulify][debug] ${message}`);
             }
-        }
+        },
     };
 }

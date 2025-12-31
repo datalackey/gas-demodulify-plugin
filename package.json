@@ -10,7 +10,8 @@
     "build:watch": "tsc --watch",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:full": "npm run build && npm test"
+    "test:full": "npm run build && npm test",
+    "build:plugin:package": "node scripts/build-plugin-package.js"
   },
   "peerDependencies": {
     "webpack": "^5.0.0"
