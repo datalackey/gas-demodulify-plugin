@@ -153,17 +153,6 @@ class GASDemodulifyPlugin {
     }
 }
 
-function resolveLogLevel(explicit?: LogLevel): LogLevel {     // TODO delete ?
-    if (explicit) return explicit;
-
-    const env = process.env.LOGLEVEL?.toLowerCase();
-    if (env === "debug" || env === "info" || env === "silent") {
-        return env;
-    }
-
-    return "info"; // default
-}
-
 
 module.exports = GASDemodulifyPlugin;
 

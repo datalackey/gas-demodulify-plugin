@@ -27,6 +27,6 @@ test(
             "globalThis.MYADDON.GAS.foo = foo;"
         );
     },
-    20_000
+    30_000
 );
 

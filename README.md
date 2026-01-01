@@ -410,7 +410,7 @@ The generated output will be:
 
 | Option value         | Effect                                                                 |
 |----------------------|------------------------------------------------------------------------|
-| omitted / "silent"	   | No output. Anything other than 'info' or 'debug' is considered 'silent' |
+|  "silent"	   | No output. Anything other than 'info' or 'debug' is considered 'silent' |
 | "info"               | High-level lifecycle messages                                          |
 | "debug"              | Full internal diagnostics                                              |      
 
