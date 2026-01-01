@@ -129,18 +129,17 @@ type ResolvedEntrypoint = {
  *  - delete all `.js` assets
  */
 export function getEmitterFunc(
-    logger: Logger,
     compilation: Compilation,
     opts: EmitterOpts
 ) {
     return () => {
-        logger.debug("Entered processAssets hook");
+        Logger.debug("Entered processAssets hook");
 
         const namespace = `${opts.namespaceRoot}.${opts.subsystem}`;
-        logger.debug(`Computed namespace: ${namespace}`);
+        Logger.debug(`Computed namespace: ${namespace}`);
 
         // Resolve the single TypeScript-authored entrypoint.
-        const entry = resolveTsEntrypoint(compilation, logger);
+        const entry = resolveTsEntrypoint(compilation);
 
         // Enforce export-surface determinism.
         assertNoWildcardReexports(compilation, entry);
@@ -153,13 +152,12 @@ export function getEmitterFunc(
         );
 
         // Remove Webpack helper artifacts that GAS cannot execute.
-        const sanitizedSource = sanitizeWebpackHelpers(rawSource, logger);
+        const sanitizedSource = sanitizeWebpackHelpers(rawSource);
 
         // Discover the explicit export surface of the entry module.
         const exportBindings = getExportBindings(
             compilation,
             entry.entryModule,
-            logger,
             opts
         );
 
@@ -177,7 +175,7 @@ export function getEmitterFunc(
         const outputName = `${entry.entryName}.gs`;
         compilation.emitAsset(outputName, new sources.RawSource(output));
 
-        logger.debug(`Emitted asset: ${outputName}`);
+        Logger.debug(`Emitted asset: ${outputName}`);
     };
 }
 
@@ -219,14 +217,13 @@ export function getEmitterFunc(
  */
 function resolveTsEntrypoint(
     compilation: Compilation,
-    logger: Logger
 ): ResolvedEntrypoint {
-    logger.debug("Resolving TypeScript entrypoint");
+    Logger.debug("Resolving TypeScript entrypoint");
 
     const candidates: ResolvedEntrypoint[] = [];
 
     for (const [entryName, entrypoint] of compilation.entrypoints) {
-        logger.debug(`Inspecting entrypoint '${entryName}'`);
+        Logger.debug(`Inspecting entrypoint '${entryName}'`);
 
         /**
          * Webpack entrypoints do not expose a single, stable API for accessing
@@ -245,7 +242,7 @@ function resolveTsEntrypoint(
                 : [])
         );
 
-        logger.debug( `Entrypoint '${entryName}' has ${chunks.length} chunk(s)` );
+        Logger.debug( `Entrypoint '${entryName}' has ${chunks.length} chunk(s)` );
 
         for (const chunk of chunks) {
             const runtime = chunk.runtime;
@@ -272,7 +269,7 @@ function resolveTsEntrypoint(
                  */
                 const res = (m as any)?.resource;
                 if (typeof res === "string" && (res.endsWith(".ts") || res.endsWith(".tsx"))) {
-                    logger.debug( `Found TS entry module for '${entryName}': ${res}` );
+                    Logger.debug( `Found TS entry module for '${entryName}': ${res}` );
 
                     candidates.push({
                         entryName,
@@ -287,7 +284,7 @@ function resolveTsEntrypoint(
     }
 
     if (candidates.length === 0) {
-        logger.debug("No TypeScript entrypoints detected");
+        Logger.debug("No TypeScript entrypoints detected");
         throw unsupportedWildcardError(
             "No TypeScript entrypoint found"
         );
@@ -295,14 +292,14 @@ function resolveTsEntrypoint(
 
     if (candidates.length > 1) {
         const names = candidates.map(c => c.entryName).join(", ");
-        logger.debug(`Multiple TS entrypoints detected: ${names}`);
+        Logger.debug(`Multiple TS entrypoints detected: ${names}`);
         throw new Error(
             `GASDemodulifyPlugin requires exactly one TypeScript entrypoint, but found ${candidates.length}: [${names}]`
         );
     }
 
     const resolved = candidates[0];
-    logger.debug( `Resolved entrypoint '${resolved.entryName}' with ${resolved.chunks.length} chunk(s)` );
+    Logger.debug( `Resolved entrypoint '${resolved.entryName}' with ${resolved.chunks.length} chunk(s)` );
 
     return resolved;
 }
@@ -396,7 +393,6 @@ function unsupportedWildcardError(details?: string): Error {
 function getExportBindings(
     compilation: Compilation,
     entryModule: Module,
-    logger: Logger,
     opts: EmitterOpts
 ): ExportBinding[] {
     const bindings: ExportBinding[] = [];
@@ -411,7 +407,7 @@ function getExportBindings(
                 opts.defaultExportName ?? "defaultExport";
 
             if (!opts.defaultExportName) {
-                logger.info(
+                Logger.info(
                     "Default export mapped to fallback name 'defaultExport'"
                 );
             }
@@ -484,8 +480,7 @@ function getModuleSource(
  * Operates conservatively at the line level.
  */
 function sanitizeWebpackHelpers(
-    source: string,
-    logger: Logger
+    source: string
 ): string {
     if (!source.trim()) return source;
 
@@ -503,7 +498,7 @@ function sanitizeWebpackHelpers(
     }
 
     if (removed > 0) {
-        logger.debug(`Removed ${removed} Webpack helper line(s)`);
+        Logger.debug(`Removed ${removed} Webpack helper line(s)`);
     }
 
     return kept.join("\n").trim();

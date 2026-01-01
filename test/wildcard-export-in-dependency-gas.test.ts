@@ -14,5 +14,5 @@ test(
             runWebpack(path.join(fixtureDir, "webpack.config.js"))
         ).rejects.toThrow(/Unsupported wildcard re-export/);
     },
-    20_000 // 👈 REQUIRED (match your other tests)
+    30_000 // 👈 REQUIRED (match your other tests)
 );

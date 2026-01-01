@@ -2,7 +2,7 @@
 
 import type { Compiler } from "webpack";
 import { getEmitterFunc } from "./CodeEmitter";
-import { createLogger } from "./Logger";
+import { Logger, LogLevel } from "./Logger";
 
 /**
  * Public configuration options for GASDemodulifyPlugin.
@@ -88,6 +88,7 @@ class GASDemodulifyPlugin {
      */
     constructor(options: GASDemodulifyOptions) {
         this.options = options;
+        Logger.setLevel(options.logLevel);
     }
 
     /**
@@ -99,7 +100,6 @@ class GASDemodulifyPlugin {
      * @param compiler The active Webpack compiler instance
      */
     apply(compiler: Compiler) {
-        const logger = createLogger(this.options.logLevel);
 
         /**
          * The `thisCompilation` hook fires once per compilation.
@@ -111,7 +111,7 @@ class GASDemodulifyPlugin {
         compiler.hooks.thisCompilation.tap(
             "GASDemodulifyPlugin",
             compilation => {
-                logger.debug("Entered thisCompilation hook");
+                Logger.debug("Entered thisCompilation hook");
 
                 /**
                  * The `processAssets` hook allows mutation of emitted assets
@@ -143,7 +143,7 @@ class GASDemodulifyPlugin {
                      * This keeps Webpack lifecycle concerns isolated here,
                      * while CodeEmitter focuses purely on transformation logic.
                      */
-                    getEmitterFunc(logger, compilation, {
+                    getEmitterFunc(compilation, {
                         namespaceRoot: this.options.namespaceRoot,
                         subsystem: this.options.subsystem
                     })
@@ -153,5 +153,18 @@ class GASDemodulifyPlugin {
     }
 }
 
+function resolveLogLevel(explicit?: LogLevel): LogLevel {     // TODO delete ?
+    if (explicit) return explicit;
+
+    const env = process.env.LOGLEVEL?.toLowerCase();
+    if (env === "debug" || env === "info" || env === "silent") {
+        return env;
+    }
+
+    return "info"; // default
+}
+
 
 module.exports = GASDemodulifyPlugin;
+
+
