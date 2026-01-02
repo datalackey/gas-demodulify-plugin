@@ -23,7 +23,7 @@ export const Logger = {
         if (rawEnv) {
             const envLevel = validateLogLevel(rawEnv);
             currentLevel = envLevel;
-            console.warn(
+            console.info(
                 `[gas-demodulify][warn] Log level overridden via environment variable LOGLEVEL=${process.env.LOGLEVEL}`
             );
             return;

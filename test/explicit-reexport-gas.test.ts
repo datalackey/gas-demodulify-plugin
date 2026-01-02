@@ -1,6 +1,7 @@
 import path from "path";
 import fs from "fs";
 import { runWebpack } from "./utils/runWebpack";
+import { readStrippedFile } from "./utils/readStrippedFile";
 
 test(
     "explicit named re-export is supported",
@@ -18,9 +19,8 @@ test(
 
         await runWebpack(path.join(fixtureDir, "webpack.config.js"));
 
-        const output = fs.readFileSync(
-            path.join(distDir, "gas.gs"),
-            "utf8"
+        const output = readStrippedFile(
+            path.join(distDir, "gas.gs")
         );
 
         expect(output).toContain(
@@ -29,4 +29,3 @@ test(
     },
     30_000
 );
-

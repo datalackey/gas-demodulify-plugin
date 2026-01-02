@@ -1,7 +1,11 @@
 import webpack from "webpack";
 import fs from "fs";
 import path from "path";
-import { FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS } from "../../src/plugin/invariants";
+import {
+    FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS
+} from "../../src/plugin/invariants";
+
+import { stripCommentsPreserveStrings } from "./stripCommentsPreserveStrings";
 
 /**
  * Global GAS safety invariants enforced for all Webpack-based tests.
@@ -49,8 +53,11 @@ export function runWebpack(configPath: string): Promise<void> {
                 const fullPath = path.join(outputDir, file);
                 const content = fs.readFileSync(fullPath, "utf8");
 
+                // Strip comments so that commented-out helper lines do not trigger invariants
+                const uncommented = stripCommentsPreserveStrings(content);
+
                 for (const forbidden of FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS) {
-                    if (content.includes(forbidden)) {
+                    if (uncommented.includes(forbidden)) {
                         offenders.push(
                             `${fullPath} (found: ${forbidden})`
                         );

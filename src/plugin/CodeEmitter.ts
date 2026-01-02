@@ -503,8 +503,8 @@ function sanitizeWebpackHelpers(source: string): string {
         if (t.startsWith("var __webpack_") || t.startsWith("__webpack_")) {
             removed++;
             // Preserve line count for source maps
-            out.push("// [gas-demodulify] stripped webpack helper");
-            //out.push(`// [gas-demodulify] stripped webpack helper: ${t}`);
+            //out.push("// [gas-demodulify] stripped webpack helper");
+            out.push(`// [gas-demodulify] stripped webpack helper: ${t}`);
         } else {
             out.push(line);
         }

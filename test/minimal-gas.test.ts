@@ -1,6 +1,7 @@
 import path from "path";
 import fs from "fs";
 import { runWebpack } from "./utils/runWebpack";
+import { readStrippedFile } from "./utils/readStrippedFile";
 
 
 test("minimal GAS subsystem build",
@@ -24,22 +25,14 @@ test("minimal GAS subsystem build",
         await runWebpack(path.join(fixtureDir, "webpack.config.js"));
 
 
-        const actual = fs.readFileSync(
-            path.join(distDir, "backend.gs"),
-            "utf8"
+        const actual = readStrippedFile(
+            path.join(distDir, "backend.gs")
         );
 
         expect(actual).toContain('globalThis.MYADDON.GAS.hello = hello;');
         expect(actual).toContain('globalThis.MYADDON.GAS.goodbye = goodbye;');
         expect(actual).toContain('function hello');
         expect(actual).toContain('function goodbye');
-
-
-        expect(actual).not.toContain(".__esModule");
-
-        expect(actual).not.toContain("__webpack_unused_export__");
-        expect(actual).not.toContain("__webpack_");
-
 
         expect(actual).not.toContain('deliberate_cruft.js');
         expect(fs.existsSync(path.join(distDir, "deliberate_cruft.js"))).toBe(false);

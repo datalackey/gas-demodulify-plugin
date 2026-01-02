@@ -1,6 +1,7 @@
 import path from "path";
 import fs from "fs";
 import { runWebpack } from "./utils/runWebpack";
+import { readStrippedFile } from "./utils/readStrippedFile";
 
 test(
     "default export maps to defaultExport when option not set",
@@ -18,9 +19,8 @@ test(
 
         await runWebpack(path.join(fixtureDir, "webpack.config.js"));
 
-        const actual = fs.readFileSync(
-            path.join(distDir, "backend.gs"),
-            "utf8"
+        const actual = readStrippedFile(
+            path.join(distDir, "backend.gs")
         );
 
         expect(actual).toContain("function foo");
