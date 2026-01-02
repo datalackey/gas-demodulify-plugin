@@ -1,6 +1,7 @@
 import webpack from "webpack";
 import fs from "fs";
 import path from "path";
+import { FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS } from "../../src/plugin/invariants";
 
 /**
  * Global GAS safety invariants enforced for all Webpack-based tests.
@@ -8,14 +9,6 @@ import path from "path";
  * Any successful build must NOT emit Webpack runtime artifacts
  * into GAS output (.gs files).
  */
-const FORBIDDEN_SUBSTRINGS = [
-    "__webpack_require__",
-    "__webpack_exports__",
-    "__webpack_module__",
-    "__webpack_modules__",
-    "__webpack_runtime__"
-];
-
 const INVARIANT_MSG =
     "Invariant violation: GAS output must not contain Webpack runtime artifacts";
 
@@ -56,7 +49,7 @@ export function runWebpack(configPath: string): Promise<void> {
                 const fullPath = path.join(outputDir, file);
                 const content = fs.readFileSync(fullPath, "utf8");
 
-                for (const forbidden of FORBIDDEN_SUBSTRINGS) {
+                for (const forbidden of FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS) {
                     if (content.includes(forbidden)) {
                         offenders.push(
                             `${fullPath} (found: ${forbidden})`

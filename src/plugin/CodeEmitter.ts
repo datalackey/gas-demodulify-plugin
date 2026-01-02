@@ -6,6 +6,7 @@ import dedent from "ts-dedent";
 import fs from "fs";
 import path from "path";
 import { Logger } from "./Logger";
+import { FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS } from "./invariants";
 
 /**
  * This module contains the code responsible for flattening a single Webpack
@@ -93,7 +94,8 @@ type ResolvedEntrypoint = {
     entryName: string;
 
     /**
-     * Root Webpack module corresponding to the entrypoint source file.
+     * Root Webpack module corresponding to the entrypoint source file. Modules map 1-1 with individual source files
+     * and enable Webpack to represent dependency relationships via a graph of what modules
      */
     entryModule: Module;
 
@@ -112,7 +114,9 @@ type ResolvedEntrypoint = {
 };
 
 /**
- * Returns the function wired into Webpack’s processAssets hook.
+ * Returns  a zero-argument function wired into Webpack’s processAssets hook that closes over:
+ *  - the compilation
+ *  - resolved plugin options
  *
  * This function is registered via:
  *
@@ -120,7 +124,7 @@ type ResolvedEntrypoint = {
  *
  * @see https://webpack.js.org/api/compilation-hooks/#processassets
  *
- * This function performs the complete demodulification pipeline:
+ * Implements the complete demodulification pipeline:
  *  - resolve the single TS entrypoint
  *  - validate export invariants
  *  - extract transpiled source
@@ -136,13 +140,15 @@ export function getEmitterFunc(
         Logger.debug("Entered processAssets hook");
 
         const namespace = `${opts.namespaceRoot}.${opts.subsystem}`;
-        Logger.debug(`Computed namespace: ${namespace}`);
+        Logger.info(`Beginning demodulification for namespace '${namespace}'`);
 
         // Resolve the single TypeScript-authored entrypoint.
         const entry = resolveTsEntrypoint(compilation);
+        Logger.info(`Resolved TypeScript entrypoint '${entry.entryName}'`);
 
         // Enforce export-surface determinism.
         assertNoWildcardReexports(compilation, entry);
+        Logger.info("Validated export surface (no wildcard re-exports)");
 
         // Extract transpiled JavaScript source for the entry module.
         const rawSource = getModuleSource(
@@ -153,6 +159,7 @@ export function getEmitterFunc(
 
         // Remove Webpack helper artifacts that GAS cannot execute.
         const sanitizedSource = sanitizeWebpackHelpers(rawSource);
+        Logger.info("Sanitized transpiled module source");
 
         // Discover the explicit export surface of the entry module.
         const exportBindings = getExportBindings(
@@ -160,6 +167,7 @@ export function getEmitterFunc(
             entry.entryModule,
             opts
         );
+        Logger.info(`Discovered ${exportBindings.length} exported symbol(s)`);
 
         // Assemble final GAS-safe output.
         const output = getGasSafeOutput(
@@ -167,15 +175,19 @@ export function getEmitterFunc(
             sanitizedSource,
             exportBindings
         );
+        Logger.info("Assembled GAS-safe output");
 
         // Delete all `.js` artifacts emitted by Webpack.
         cleanupJsAssets(compilation);
+        Logger.info("Removed transient Webpack JavaScript artifacts");
 
         // Output filename is derived from the Webpack entry name.
         const outputName = `${entry.entryName}.gs`;
+
+        warnIfWebpackRuntimeLeaked(output, `${opts.namespaceRoot}.${opts.subsystem}`);
         compilation.emitAsset(outputName, new sources.RawSource(output));
 
-        Logger.debug(`Emitted asset: ${outputName}`);
+        Logger.info(`Emitted GAS artifact '${outputName}'`);
     };
 }
 
@@ -195,9 +207,10 @@ export function getEmitterFunc(
  * What do we mean by  'runtime' ?
  *
  * The value of runtime is partially influenced by the target environment, but it is not
- * equal to the target and not determined by it alone. More acurately  runtime identifies
- * a Webpack bundle execution context. That context may differ based on target
- * environment, entrypoint, or both.
+ * equal to the target and not determined by it alone. More accurately, runtime identifies
+ * a Webpack bundle execution context (each with a distinct module registry, module cache, and execution order).
+ * Such contexts may differ based on (a) target environment (such as a particular browser, Node variant, etc.),
+ * (b) entrypoint, or both (a) and (b).
  *
  * Why do we need runtime in ResolvedEntrypoint?
  *
@@ -242,7 +255,7 @@ function resolveTsEntrypoint(
                 : [])
         );
 
-        Logger.debug( `Entrypoint '${entryName}' has ${chunks.length} chunk(s)` );
+        Logger.debug(`Entrypoint '${entryName}' has ${chunks.length} chunk(s)`);
 
         for (const chunk of chunks) {
             const runtime = chunk.runtime;
@@ -269,7 +282,7 @@ function resolveTsEntrypoint(
                  */
                 const res = (m as any)?.resource;
                 if (typeof res === "string" && (res.endsWith(".ts") || res.endsWith(".tsx"))) {
-                    Logger.debug( `Found TS entry module for '${entryName}': ${res}` );
+                    Logger.debug(`Found TS entry module for '${entryName}': ${res}`);
 
                     candidates.push({
                         entryName,
@@ -284,7 +297,6 @@ function resolveTsEntrypoint(
     }
 
     if (candidates.length === 0) {
-        Logger.debug("No TypeScript entrypoints detected");
         throw unsupportedWildcardError(
             "No TypeScript entrypoint found"
         );
@@ -292,14 +304,13 @@ function resolveTsEntrypoint(
 
     if (candidates.length > 1) {
         const names = candidates.map(c => c.entryName).join(", ");
-        Logger.debug(`Multiple TS entrypoints detected: ${names}`);
         throw new Error(
             `GASDemodulifyPlugin requires exactly one TypeScript entrypoint, but found ${candidates.length}: [${names}]`
         );
     }
 
     const resolved = candidates[0];
-    Logger.debug( `Resolved entrypoint '${resolved.entryName}' with ${resolved.chunks.length} chunk(s)` );
+    Logger.debug(`Resolved entrypoint '${resolved.entryName}' with ${resolved.chunks.length} chunk(s)`);
 
     return resolved;
 }
@@ -479,29 +490,46 @@ function getModuleSource(
  * Removes Webpack codegen helper artifacts from the module body.
  * Operates conservatively at the line level.
  */
-function sanitizeWebpackHelpers(
-    source: string
-): string {
+function sanitizeWebpackHelpers(source: string): string {
     if (!source.trim()) return source;
 
     const lines = source.split(/\r?\n/);
-    const kept: string[] = [];
+    const out: string[] = [];
     let removed = 0;
 
     for (const line of lines) {
         const t = line.trim();
+
         if (t.startsWith("var __webpack_") || t.startsWith("__webpack_")) {
             removed++;
-            continue;
+            // Preserve line count for source maps
+            out.push("// [gas-demodulify] stripped webpack helper");
+            //out.push(`// [gas-demodulify] stripped webpack helper: ${t}`);
+        } else {
+            out.push(line);
         }
-        kept.push(line);
     }
 
     if (removed > 0) {
-        Logger.debug(`Removed ${removed} Webpack helper line(s)`);
+        Logger.debug(`Stripped ${removed} Webpack helper line(s)`);
     }
 
-    return kept.join("\n").trim();
+    return out.join("\n");
+}
+
+/**
+ * Non-fatal runtime invariant check: surface any leaked webpack runtime artifacts
+ */
+function warnIfWebpackRuntimeLeaked(output: string, context: string) {
+    for (const forbidden of FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS) {
+        if (output.includes(forbidden)) {
+            Logger.error(
+                `Internal invariant violated: Webpack runtime artifact '${forbidden}' ` +
+                `detected in emitted GAS output (${context}). This indicates a demodulification bug.`
+            );
+            return;
+        }
+    }
 }
 
 /**
@@ -521,11 +549,11 @@ function renderNamespaceInit(namespace: string): string {
 }
 
 /**
-  * Deletes all `.js` assets emitted by Webpack.
-  *
-  * In gas-demodulify builds, JavaScript output is transient and must not
-  * be written to disk.
-  */
+ * Deletes all `.js` assets emitted by Webpack.
+ *
+ * In gas-demodulify builds, JavaScript output is transient and must not
+ * be written to disk.
+ */
 function cleanupJsAssets(
     compilation: Compilation
 ) {

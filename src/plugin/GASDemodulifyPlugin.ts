@@ -2,7 +2,7 @@
 
 import type { Compiler } from "webpack";
 import { getEmitterFunc } from "./CodeEmitter";
-import { Logger, LogLevel } from "./Logger";
+import { Logger } from "./Logger";
 
 /**
  * Public configuration options for GASDemodulifyPlugin.
@@ -75,7 +75,7 @@ export interface GASDemodulifyOptions {
  *
  * Design notes:
  *  - This class is intentionally thin
- *  - All substantive transformation logic lives in CodeEmitter.ts
+ *  - All substantive transformation logic lives in CodeEmitter.ts (getEmitterFunc)
  *  - This keeps Webpack lifecycle wiring separate from code-generation logic
  */
 class GASDemodulifyPlugin {
@@ -89,6 +89,13 @@ class GASDemodulifyPlugin {
     constructor(options: GASDemodulifyOptions) {
         this.options = options;
         Logger.setLevel(options.logLevel);
+
+        Logger.info(
+            `Initialized GASDemodulifyPlugin ` +
+            `(namespaceRoot=${options.namespaceRoot}, ` +
+            `subsystem=${options.subsystem}, ` +
+            `buildMode=${options.buildMode})`
+        );
     }
 
     /**
@@ -102,16 +109,18 @@ class GASDemodulifyPlugin {
     apply(compiler: Compiler) {
 
         /**
-         * The `thisCompilation` hook fires once per compilation.
+         * The `thisCompilation` hook fires once for each build execution.
          *
-         * We use it instead of `compiler.hooks.compilation` so that:
-         *  - we get a fresh Compilation object
-         *  - we can safely attach to compilation-scoped hooks
+         * Notes:
+         *  - A single Compiler may produce multiple Compilations over time
+         *    (watch mode, dev server, rebuilds).
+         *  - All asset mutation must be scoped to the current Compilation.
          */
         compiler.hooks.thisCompilation.tap(
             "GASDemodulifyPlugin",
             compilation => {
-                Logger.debug("Entered thisCompilation hook");
+                Logger.info("Starting GAS demodulification for new compilation");
+                Logger.debug("Entered hook: 'thisCompilation'");
 
                 /**
                  * The `processAssets` hook allows mutation of emitted assets
@@ -123,6 +132,8 @@ class GASDemodulifyPlugin {
                  *  - delete Webpack-emitted `.js` artifacts
                  *  - emit GAS-safe `.gs` / `.html` outputs
                  */
+                Logger.info("Registering GAS demodulification asset processor");
+
                 compilation.hooks.processAssets.tap(
                     {
                         name: "GASDemodulifyPlugin",
@@ -134,14 +145,6 @@ class GASDemodulifyPlugin {
                     /**
                      * Delegate all asset processing to CodeEmitter.
                      *
-                     * getEmitterFunc returns a zero-argument function
-                     * that closes over:
-                     *  - the compilation
-                     *  - resolved plugin options
-                     *  - the logger
-                     *
-                     * This keeps Webpack lifecycle concerns isolated here,
-                     * while CodeEmitter focuses purely on transformation logic.
                      */
                     getEmitterFunc(compilation, {
                         namespaceRoot: this.options.namespaceRoot,
@@ -153,7 +156,4 @@ class GASDemodulifyPlugin {
     }
 }
 
-
 module.exports = GASDemodulifyPlugin;
-
-

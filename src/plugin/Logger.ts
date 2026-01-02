@@ -69,10 +69,3 @@ function validateLogLevel(value: string): LogLevel {
     throw new Error(`Invalid LOGLEVEL value '${value}'. Expected one of: silent, info, debug.`);
 }
 
-// Minimal named exports to satisfy static analyzers and allow direct imports in tests
-export const setLevel = Logger.setLevel;
-export const info = Logger.info;
-export const debug = Logger.debug;
-export const warn = Logger.warn;
-export const error = Logger.error;
-
