@@ -6,19 +6,22 @@ let currentLevel: LogLevel = "info";
 
 export const Logger = {
     /**
-     * Resolves effective log level.
+     * Set the effective log level for the demodulification run.
      *
-     * Precedence:
-     *   1. LOGLEVEL environment variable (if set)
-     *   2. Configured level
-     *   3. Default: "info"
+     * Behavior and precedence:
+     *  1) If an environment variable LOGLEVEL is present and valid ("silent", "info", "debug"),
+     *     it takes precedence and overrides any configured value.
+     *  2) Otherwise, the provided configured value is used when present.
+     *  3) If neither is provided, the default is "info".
      *
-     * Throws if LOGLEVEL is invalid.
+     * Notes:
+     *  - Invalid values provided either via LOGLEVEL or the configured argument will cause
+     *    an exception to be thrown to surface the misconfiguration early.
      */
     setLevel(configured?: LogLevel) {
-        const envLevel = parseEnvLogLevel();
-
-        if (envLevel) {
+        const rawEnv = process.env.LOGLEVEL;
+        if (rawEnv) {
+            const envLevel = validateLogLevel(rawEnv);
             currentLevel = envLevel;
             console.warn(
                 `[gas-demodulify][warn] Log level overridden via environment variable LOGLEVEL=${process.env.LOGLEVEL}`
@@ -26,7 +29,14 @@ export const Logger = {
             return;
         }
 
-        currentLevel = configured ?? "info";
+        // If no env override, validate the explicit configured value using the same validator
+        if (configured === undefined) {
+            currentLevel = "info";
+            return;
+        }
+
+        const validated = validateLogLevel(String(configured));
+        currentLevel = validated;
     },
 
     info(msg: string) {
@@ -50,21 +60,19 @@ export const Logger = {
     }
 };
 
-function parseEnvLogLevel(): LogLevel | undefined {
-    const raw = process.env.LOGLEVEL;
-    if (!raw) return undefined;
 
-    const v = raw.toLowerCase();
+function validateLogLevel(value: string): LogLevel {
+    const v = value.toLowerCase();
     if (v === "silent" || v === "info" || v === "debug") {
-        return v;
+        return v as LogLevel;
     }
-
-    throw new Error(
-        `[gas-demodulify] Invalid LOGLEVEL value '${raw}'. ` +
-        `Expected one of: silent, info, debug.`
-    );
+    throw new Error(`Invalid LOGLEVEL value '${value}'. Expected one of: silent, info, debug.`);
 }
 
-
-
+// Minimal named exports to satisfy static analyzers and allow direct imports in tests
+export const setLevel = Logger.setLevel;
+export const info = Logger.info;
+export const debug = Logger.debug;
+export const warn = Logger.warn;
+export const error = Logger.error;
 

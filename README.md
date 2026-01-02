@@ -397,45 +397,22 @@ If defaultExportName is specified:
 >         defaultExportName: "main",
 >         logLevel: "info"
 >       });
+>
+>
+#### Log level
 
+Control the verbosity of the plugin's diagnostic output. Accepted values are:
 
+- "silent" — no *info* or *debug* logging, only *warn* and *error*
+- "info" — high-level lifecycle messages (default)
+- "debug" — verbose internal diagnostics
 
-The generated output will be:
+Precedence and behavior:
 
-> globalThis.MYADDON.UI.main = foo;
+- If the environment variable `LOGLEVEL` is present and set to a valid value, it overrides the explicit `logLevel` option passed to the plugin. For example:
+  - `LOGLEVEL=debug npm run build` will enable debug output regardless of the plugin's `logLevel` option.
+- If `LOGLEVEL` is not set, the plugin uses the explicit `logLevel` option when provided.
+- If neither `LOGLEVEL` nor an explicit `logLevel` is provided, the default level is `info`.
+- Invalid log level values (from the environment or the explicit option) are treated as configuration errors and will cause the build to fail.
 
-
-#### *logLevel*
-
-
-| Option value         | Effect                                                                 |
-|----------------------|------------------------------------------------------------------------|
-|  "silent"	   | No output. Anything other than 'info' or 'debug' is considered 'silent' |
-| "info"               | High-level lifecycle messages                                          |
-| "debug"              | Full internal diagnostics                                              |      
-
-
-
-
-
-
-
-
-
-
-##  Caveats
-
-**No  JavaScript emitted by Webpack is retained.**
-
-In a gas-demodulify build, the output directory contains only GAS-safe artifacts (.gs and/or .html). Any JavaScript emitted by Webpack is deleted before output is written.
-
-**No Support for Wildcard re-exports**
-
-This is not supported:
-
->  export * from "./module"
-
-Instead, when exposing symbols from another module, list each export explicitly:
-
->  export { foo, bar, baz } from "./module";
-
+For test harnesses: tests may set `LOGLEVEL` in the environment or inject `logLevel` into fixture plugin instances; the environment variable takes precedence.
