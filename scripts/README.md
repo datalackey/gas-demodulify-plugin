@@ -1,0 +1,1 @@
+Scripts that support first-time set up and specific build steps such as plugin packaging and release.

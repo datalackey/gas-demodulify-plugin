@@ -1,0 +1,1 @@
+Webpack configuration to support end-to-end tests, plus source code to be transformed, and dist folder for transformed results.
