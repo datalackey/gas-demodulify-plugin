@@ -2,7 +2,7 @@ import path from "path";
 import { runWebpack } from "./utils/runWebpack";
 
 test(
-    "fails fast on namespace wildcard re-export (export * as ns from)",
+    "wildcard-namespace-reexport-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,

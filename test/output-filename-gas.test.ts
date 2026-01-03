@@ -3,7 +3,7 @@ import fs from "fs";
 import { runWebpack } from "./utils/runWebpack";
 
 test(
-    "GAS output filename is derived from entry name",
+    "output-filename-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,

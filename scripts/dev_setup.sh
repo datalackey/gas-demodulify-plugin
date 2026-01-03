@@ -18,8 +18,7 @@ fi
 
 echo "Node.js version OK: $NODE_VERSION_RAW"
 npm install
-npm run build
-npm test
+npm run release
 
 
 

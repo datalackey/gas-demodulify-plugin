@@ -2,7 +2,7 @@ import path from "path";
 import { runWebpack } from "./utils/runWebpack";
 
 test(
-    "fails fast on wildcard re-export (export * from)",
+    "wildcard-export-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,

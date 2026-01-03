@@ -4,7 +4,7 @@ import { runWebpack } from "./utils/runWebpack";
 import { readStrippedFile } from "./utils/readStrippedFile";
 
 test(
-    "default export maps to defaultExport when option not set",
+    "default-export-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,

@@ -19,13 +19,14 @@ export const Logger = {
      *    an exception to be thrown to surface the misconfiguration early.
      */
     setLevel(configured?: LogLevel) {
-        const rawEnv = process.env.LOGLEVEL;
-        if (rawEnv) {
-            const envLevel = validateLogLevel(rawEnv);
-            currentLevel = envLevel;
-            console.info(
-                `[gas-demodulify][warn] Log level overridden via environment variable LOGLEVEL=${process.env.LOGLEVEL}`
-            );
+        const overrideLevel = process.env.LOGLEVEL;
+        if (overrideLevel) {
+            currentLevel = validateLogLevel(overrideLevel);
+            if (currentLevel !== "silent")  {
+                console.info(
+                    `[gas-demodulify][warn] Log level overridden via environment variable LOGLEVEL=${process.env.LOGLEVEL}`
+                );
+            }
             return;
         }
 

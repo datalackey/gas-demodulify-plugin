@@ -5,7 +5,8 @@ import {
     FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS
 } from "../../src/plugin/invariants";
 
-import { stripCommentsPreserveStrings } from "./stripCommentsPreserveStrings";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const strip = require('strip-comments');
 
 /**
  * Global GAS safety invariants enforced for all Webpack-based tests.
@@ -25,7 +26,7 @@ const INVARIANT_MSG =
  */
 export function runWebpack(configPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
-        // Allow CommonJS fixture configs
+        // Allow CommonJS fixture configs -- can't import from dynamic paths
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const config = require(configPath);
 
@@ -54,7 +55,7 @@ export function runWebpack(configPath: string): Promise<void> {
                 const content = fs.readFileSync(fullPath, "utf8");
 
                 // Strip comments so that commented-out helper lines do not trigger invariants
-                const uncommented = stripCommentsPreserveStrings(content);
+                const uncommented = strip(content);
 
                 for (const forbidden of FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS) {
                     if (uncommented.includes(forbidden)) {

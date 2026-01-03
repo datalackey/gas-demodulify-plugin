@@ -4,7 +4,7 @@ import { runWebpack } from "./utils/runWebpack";
 import { readStrippedFile } from "./utils/readStrippedFile";
 
 
-test("minimal GAS subsystem build",
+test("minimal-gas",
 
     async () => {
         const fixtureDir = path.join(
@@ -14,7 +14,6 @@ test("minimal GAS subsystem build",
         );
 
         const distDir = path.join(fixtureDir, "dist");
-        const expectedDir = path.join(fixtureDir, "expected");
 
 
         // clean dist

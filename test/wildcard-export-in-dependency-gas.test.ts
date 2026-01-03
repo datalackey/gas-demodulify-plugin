@@ -2,7 +2,7 @@ import path from "path";
 import { runWebpack } from "./utils/runWebpack";
 
 test(
-    "wildcard re-export in a dependency is rejected",
+    "wildcard-export-in-dependency-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,

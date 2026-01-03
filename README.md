@@ -417,3 +417,55 @@ Precedence and behavior:
 - Invalid log level values (from the environment or the explicit option) are treated as configuration errors and will cause the build to fail.
 
 Tests may set `LOGLEVEL` in the environment or inject `logLevel` into fixture plugin instances. The environment variable takes precedence.
+
+
+## Guidance For Plugin Maintainers
+
+This section is targeted to developers interested in contributing (features, tests, fixes, etc.) to the 
+plugin itself, rather than plugin users.
+
+
+### First-time setup
+
+Run the provided development setup script to install dependencies, compile, and run 
+the test-suite once. The script also checks your Node.js version.
+
+```sh
+# from the project root
+./scripts/dev_setup.sh
+```
+
+This will leave the compiled artifacts in `dist/` and produce the packaged plugin under `dist/plugin` so samples and IDE runners will use the latest compiled code.
+
+### Why tests in an IDE may not use your edited source
+
+Some workflows (and the `samples/` projects) install the packaged plugin 
+from `dist/plugin` (for example `samples/with-source-maps` references `file:../../dist/plugin`). 
+When you run tests from an IDE or when a sample project 
+installs the plugin from disk, it will pick up the generated package under `dist/plugin` rather than 
+the TypeScript source you are editing in `src/`.
+
+That means: if you change source files in `src/` and then run tests from your IDE without 
+rebuilding the packaged plugin, the tests may still exercise the old compiled code under `dist/plugin`.
+
+### Commands to ensure tests use the latest source
+
+Before running tests from an IDE or from another project that depends on the packaged plugin, 
+make sure the compiled output and packaged plugin are up-to-date. The simplest sequence is:
+
+```sh
+# install deps (only needed once or when package.json changed)
+npm install
+
+# Packate plugin into dist/
+npm run release
+
+```
+
+
+### Quick troubleshooting
+
+- If tests run in your IDE appear to be 'stale' (not reflecting recent edits), re-run `npm run compile` (or the three-step sequence above) before re-running tests from the IDE.
+- If a sample project shows an older plugin, make sure you rebuilt `dist/plugin` with `node scripts/build-plugin-package.js` and (in the sample) re-run `npm install` if the sample did an earlier install from the file: path.
+
+If you'd like, I can also add a small npm script (for example `npm run build:package`) that runs `node scripts/build-plugin-package.js` and update `package.json` to make the workflow even smoother.

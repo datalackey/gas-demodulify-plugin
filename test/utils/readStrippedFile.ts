@@ -1,8 +1,9 @@
 import fs from "fs";
-import { stripCommentsPreserveStrings } from "./stripCommentsPreserveStrings";
+
+
+const strip = require('strip-comments');
 
 export function readStrippedFile(filePath: string): string {
     const content = fs.readFileSync(filePath, "utf8");
-    return stripCommentsPreserveStrings(content);
+    return strip(content);
 }
-

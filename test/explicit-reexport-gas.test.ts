@@ -4,7 +4,7 @@ import { runWebpack } from "./utils/runWebpack";
 import { readStrippedFile } from "./utils/readStrippedFile";
 
 test(
-    "explicit named re-export is supported",
+    "explicit-reexport-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,

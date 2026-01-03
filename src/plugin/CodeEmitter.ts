@@ -448,7 +448,7 @@ function getGasSafeOutput(
     moduleSource: string,
     exports: ExportBinding[]
 ) {
-    return dedent`
+    const output =  dedent`
         ${renderNamespaceInit(namespace)}
 
         // Module code (transpiled)
@@ -462,6 +462,10 @@ function getGasSafeOutput(
         )
         .join("\n")}
     `;
+
+    Logger.debug(("Final GAS output:\n" + output).slice(0, 1000) +
+        (output.length > 1000 ? "\n...[truncated]" : ""));
+    return output;
 }
 
 /**
@@ -488,7 +492,7 @@ function getModuleSource(
 
 /**
  * Removes Webpack codegen helper artifacts from the module body.
- * Operates conservatively at the line level.
+ * Comments out illegal lines to try to preserve line number of the source line for source map debugging.
  */
 function sanitizeWebpackHelpers(source: string): string {
     if (!source.trim()) return source;
@@ -498,13 +502,14 @@ function sanitizeWebpackHelpers(source: string): string {
     let removed = 0;
 
     for (const line of lines) {
-        const t = line.trim();
-
-        if (t.startsWith("var __webpack_") || t.startsWith("__webpack_")) {
+        const trimmedLine = line.trim();
+        if (trimmedLine.includes("webpack") || trimmedLine.includes("esModule")) {
             removed++;
-            // Preserve line count for source maps
-            //out.push("// [gas-demodulify] stripped webpack helper");
-            out.push(`// [gas-demodulify] stripped webpack helper: ${t}`);
+            const commentedLine =
+                `// [dropped-by-gas-demodulify]: ${trimmedLine}`
+                    .replace("webpack", "WEBPACK")
+                    .replace("esModule","ES_MODULE");
+            out.push(commentedLine);
         } else {
             out.push(line);
         }
