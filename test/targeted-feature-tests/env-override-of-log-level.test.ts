@@ -1,9 +1,15 @@
+// test/targeted-feature-tests/env-override-of-log-level.test.ts
+
+import { Logger } from "../../src/plugin/Logger";
+
 describe("Logger LOGLEVEL environment override", () => {
     let logSpy: jest.SpyInstance;
+    let infoSpy: jest.SpyInstance;
     let warnSpy: jest.SpyInstance;
 
     beforeEach(() => {
         logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+        infoSpy = jest.spyOn(console, "info").mockImplementation(() => {});
         warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
     });
 
@@ -28,7 +34,7 @@ describe("Logger LOGLEVEL environment override", () => {
 
         Logger.setLevel("debug");
 
-        expect(warnSpy).toHaveBeenCalledWith(
+        expect(infoSpy).toHaveBeenCalledWith(
             "[gas-demodulify][warn] Log level overridden via environment variable LOGLEVEL=info"
         );
     });
@@ -38,6 +44,7 @@ describe("Logger LOGLEVEL environment override", () => {
 
         Logger.setLevel("debug");
 
+        expect(infoSpy).not.toHaveBeenCalled();
         expect(warnSpy).not.toHaveBeenCalled();
     });
 

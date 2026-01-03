@@ -450,6 +450,10 @@ the TypeScript source you are editing in `src/`.
 That means: if you change source files in `src/` and then run tests from your IDE without 
 rebuilding the packaged plugin, the tests may still exercise the old compiled code under `dist/plugin`.
 
+We have a guard in place which warns you if the `dist/plugin` package is out-of-date with respect to the `src/` files.
+It will trigger when running tests from the IDE.  You will see: "Error: Stale dist detected."
+However, no such guard exists for the samples yet.
+
 ### Commands to ensure tests use the latest source
 
 Before running tests from an IDE or from another project that depends on the packaged plugin, 
@@ -467,8 +471,8 @@ npm run release
 
 ### Quick troubleshooting
 
-- If tests run in your IDE appear to be 'stale' (not reflecting recent edits), re-run `npm run compile` (or the three-step sequence above) before re-running tests from the IDE.
-- If a sample project shows an older plugin, make sure you rebuilt `dist/plugin` with `node scripts/build-plugin-package.js` and (in the sample) re-run `npm install` if the sample did an earlier install from the file: path.
+- If tests run in your IDE appear to be 'stale' (not reflecting recent edits), 
+re-run `npm run compile` before re-running tests from the IDE.
+- If a sample project shows an older plugin, make sure you rebuilt the properly packaged plugin via the command: `npm run release`.
 
-If you'd like, I can also add a small npm script (for example `npm run build:package`) that runs `node scripts/build-plugin-package.js` and update `package.json` to make the workflow even smoother.
 

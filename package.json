@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "license": "MIT",
   "scripts": {
-    "compile": "tsc",
+    "compile": "echo COMPILING && tsc",
     "compile:watch": "tsc --watch",
     "pretest": "npm run compile",
     "test": "jest",

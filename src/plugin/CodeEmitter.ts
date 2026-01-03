@@ -297,9 +297,7 @@ function resolveTsEntrypoint(
     }
 
     if (candidates.length === 0) {
-        throw unsupportedWildcardError(
-            "No TypeScript entrypoint found"
-        );
+        throw new Error("No TypeScript entrypoint found");
     }
 
     if (candidates.length > 1) {
@@ -342,8 +340,13 @@ function assertNoWildcardReexports(
         for (const module of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
             const resource = (module as any)?.resource;
 
+            console.log("one");
+
             // Prefer source-level detection for TS-authored files.
             if (typeof resource === "string" && (resource.endsWith(".ts") || resource.endsWith(".tsx"))) {
+
+                console.log("two");
+
                 const abs = path.isAbsolute(resource)
                     ? resource
                     : path.resolve(
@@ -352,8 +355,11 @@ function assertNoWildcardReexports(
                     );
 
                 if (fs.existsSync(abs)) {
+
+                    console.log("3");
                     const content = fs.readFileSync(abs, "utf8");
                     if (exportStarRe.test(content)) {
+                        console.log("4");
                         throw unsupportedWildcardError(`Module: ${abs}`);
                     }
                 }
