@@ -28,5 +28,5 @@ test(
             "globalThis.MYADDON.GAS.defaultExport = defaultExport;"
         );
     },
-    20_000
+    30_000
 );

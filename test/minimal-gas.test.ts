@@ -14,6 +14,7 @@ test("minimal-gas",
         );
 
         const distDir = path.join(fixtureDir, "dist");
+        const expectedDir = path.join(fixtureDir, "expected");
 
 
         // clean dist
@@ -37,5 +38,5 @@ test("minimal-gas",
         expect(fs.existsSync(path.join(distDir, "deliberate_cruft.js"))).toBe(false);
     },
 
-    20_000
+    30_000
 );

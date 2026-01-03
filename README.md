@@ -431,8 +431,9 @@ Run the provided development setup script to install dependencies, compile, and 
 the test-suite once. The script also checks your Node.js version.
 
 ```sh
-# from the project root
-./scripts/dev_setup.sh
+git clone git@github.com:buildlackey/gas-demodulify-plugin.git
+cd gas-demodulify-plugin
+bash ./scripts/dev_setup.sh
 ```
 
 This will leave the compiled artifacts in `dist/` and produce the packaged plugin under `dist/plugin` so samples and IDE runners will use the latest compiled code.
