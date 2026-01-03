@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
-import { runWebpack } from "./utils/runWebpack";
-import { readStrippedFile } from "./utils/readStrippedFile";
+import { runWebpack } from "../utils/runWebpack";
+import { readStrippedFile } from "../utils/readStrippedFile";
 
 
 test("minimal-gas",
@@ -9,12 +9,12 @@ test("minimal-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,
+            "..",
             "fixtures",
             "minimal-gas"
         );
 
         const distDir = path.join(fixtureDir, "dist");
-        const expectedDir = path.join(fixtureDir, "expected");
 
 
         // clean dist

@@ -1,11 +1,12 @@
 import path from "path";
-import { runWebpack } from "./utils/runWebpack";
+import { runWebpack } from "../utils/runWebpack";
 
 test(
     "wildcard-export-in-dependency-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,
+            "..",
             "fixtures",
             "wildcard-export-in-dependency-gas"
         );

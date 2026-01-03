@@ -1,15 +1,15 @@
 import path from "path";
 import fs from "fs";
-import { runWebpack } from "./utils/runWebpack";
-import { readStrippedFile } from "./utils/readStrippedFile";
+import { runWebpack } from "../utils/runWebpack";
 
 test(
-    "explicit-reexport-gas",
+    "output-filename-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,
+            "..",
             "fixtures",
-            "explicit-reexport-gas"
+            "output-filename-gas"
         );
 
         const distDir = path.join(fixtureDir, "dist");
@@ -19,13 +19,13 @@ test(
 
         await runWebpack(path.join(fixtureDir, "webpack.config.js"));
 
-        const output = readStrippedFile(
-            path.join(distDir, "gas.gs")
-        );
+        const files = fs.readdirSync(distDir);
 
-        expect(output).toContain(
-            "globalThis.MYADDON.GAS.foo = foo;"
-        );
+        // ❌ This will FAIL with current implementation
+        expect(files).toContain("gas.gs");
+
+        // Optional sanity check
+        expect(files).not.toContain("backend.gs");
     },
-    30_000
+    20_000
 );

@@ -422,7 +422,8 @@ Tests may set `LOGLEVEL` in the environment or inject `logLevel` into fixture pl
 ## Guidance For Plugin Maintainers
 
 This section is targeted to developers interested in contributing (features, tests, fixes, etc.) to the 
-plugin itself, rather than plugin users.
+plugin itself, rather than plugin users. So far all development has been done by on nixos Linux. So
+MacOS or Windows developers may need to wing it a bit.
 
 
 ### First-time setup
@@ -470,3 +471,4 @@ npm run release
 - If a sample project shows an older plugin, make sure you rebuilt `dist/plugin` with `node scripts/build-plugin-package.js` and (in the sample) re-run `npm install` if the sample did an earlier install from the file: path.
 
 If you'd like, I can also add a small npm script (for example `npm run build:package`) that runs `node scripts/build-plugin-package.js` and update `package.json` to make the workflow even smoother.
+
