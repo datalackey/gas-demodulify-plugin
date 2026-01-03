@@ -8,7 +8,6 @@ test(
     async () => {
         const fixtureDir = path.join(
             __dirname,
-            "..",
             "fixtures",
             "explicit-reexport-gas"
         );

@@ -6,7 +6,6 @@ test(
     async () => {
         const fixtureDir = path.join(
             __dirname,
-            "..",
             "fixtures",
             "wildcard-namespace-reexport-gas"
         );

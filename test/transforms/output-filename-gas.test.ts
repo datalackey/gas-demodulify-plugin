@@ -7,7 +7,6 @@ test(
     async () => {
         const fixtureDir = path.join(
             __dirname,
-            "..",
             "fixtures",
             "output-filename-gas"
         );

@@ -1,19 +1,20 @@
 const path = require("path");
-const GASDemodulifyPlugin = require("../../../dist");
+const GASDemodulifyPlugin = require("../../../../dist")
 
 module.exports = {
   mode: "production",
   context: __dirname,
 
   entry: {
-    gas: "./src/gas/index.ts"
+    backend: "./src/gas/index.ts",
+    deliberate_cruft: "./src/deliberate_cruft.js"      // This entry is to verify that any .js cruft in dist dir is cleaned up
   },
 
-  output: {
+    output: {
     path: path.join(__dirname, "dist"),
     filename: "[name].js"
-  },
 
+  },
   module: {
     rules: [
       {
@@ -22,14 +23,12 @@ module.exports = {
       }
     ]
   },
-
   plugins: [
     new GASDemodulifyPlugin({
       namespaceRoot: "MYADDON",
       subsystem: "GAS",
       buildMode: "gas",
-      logLevel: "info"
+      logLevel: "silent"
     })
   ]
 };
-

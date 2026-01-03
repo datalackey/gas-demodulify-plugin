@@ -9,7 +9,6 @@ test("minimal-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,
-            "..",
             "fixtures",
             "minimal-gas"
         );
