@@ -3,16 +3,19 @@
 A Webpack plugin that flattens modular TypeScript codebases into
 [Google Apps Script](https://workspace.google.com/products/apps-script/) (GAS)-safe
 JavaScript with clean **hierarchical
-namespaces** corresponding to the top-level subsystems of a complex GAS
-add-on extension.
+namespaces** corresponding to the top-level subsystems of a complex [GAS
+add-on extension](https://developers.google.com/apps-script/guides/sheets).
 This plugin was originally intended to serve as the core of an opinionated build
 system for such extensions. Most existing Webpack-based tooling and GAS starter repos deal with
 simple codebases and flat scripts, but fail when applied to more
 complex architectures.  
 
-So, if your (Typescript) code base has multiple subsystems, and if you want your emitted GAS code to 
-isolate code for each subsystem into its own namespace, and you are horrified at the prospect of using brittle 
-search and replace on strings to post-modify output, then this plugin is for you. 
+So, if your (Typescript) code base 
+- has multiple subsystems, and 
+- you want your emitted GAS code to isolate code for each subsystem into its own namespace, and 
+- you are horrified at the prospect of using brittle search and replace on strings to post-modify webpack output 
+then this plugin is for you. 
+
 When generating code `gas-demodulify` completely discards Webpack’s emitted runtime artifacts 
 — including the __webpack_require__ 
 mechanism and its wrapping IIFE. Instead, it generates fresh, GAS-safe JavaScript
@@ -38,11 +41,10 @@ as discussed in the configuration section, below.
 
 The UI subsystem typically consists of:
 
-- HTMLService dialogs    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but 'raw' pushed by clasp)
-- Sidebar interfaces     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but 'raw' pushed by clasp)
-- svg images for icons   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but 'raw' pushed by clasp)
-- Client-side JavaScript
-- Browser-context logic for interacting with end users
+- HTMLService dialogs    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but  pushed 'raw' by clasp)
+- Sidebar interfaces     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but  pushed 'raw' by clasp)
+- svg images for icons   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but  pushed 'raw' by clasp)
+- Client-side controller logic running in browser 
 - Multi-step orchestration flows unsuitable for pure GAS execution
 
 ### Backend (GAS) subsystem
@@ -222,22 +224,54 @@ UI.
 
 ### 1) Why should client-side browser code be processed with Webpack at all?
 
-Although the UI code of a GAS add-on ultimately executes inside a modern
-Chromium-based browser (in a dialog or sidebar iframe), the browser
-never receives your JavaScript directly. All UI code must be delivered
-through `HtmlService`, which expects to load exactly one HTML file, with all JavaScript
-imports resolved and inlined.
+
+Although the UI code of a GAS add-on ultimately executes inside your
+browser (for example, within a dialog or sidebar iframe),
+the browser never receives your JavaScript as a distinct chunk separate from the surrounding mark-up. 
+All UI code must be delivered through HtmlService, which expects you to load exactly one HTML file,
+with all JavaScript imports resolved and all code inlined and delivered
+together with the HTML markup as a single unit.
+
+In a conventional web application, client-side JavaScript may be split
+across many files and loaded dynamically by the browser using ES modules.
+For example, HTML such as:
+
+```html
+<script type="module" src="./main.js"></script>
+```
+
+instructs the browser to treat main.js as an ES module entrypoint. The
+browser will then issue an HTTP request such as:
+
+```http
+GET /main.js
+```
+
+and, as additional import statements are encountered, will issue further
+requests for each referenced module. These requests are resolved by a web
+server that exposes URL-addressable JavaScript resources (for example,
+static files served from the application’s document root).
+
+Google Apps Script does not provide such a delivery model. HtmlService emits
+a single, generated HTML document and does not expose a web server capable
+of responding to follow-on requests for JavaScript modules. As a result,
+there are no URL-addressable resources corresponding to ./main.js (or any
+other imported module), and ES module loading via 
+
+```html
+<script type="module">
+```
+
+is fundamentally unsupported in GAS. Therefore:
+Even though the browser environment itself is fully capable of executing ES, GAS cannot deliver ES modules.
+For this reason, all UI code—even purely client-side code—must be bundled
+into a single, flat `<script>` block, with all imports resolved ahead of
+time, no import or export syntax remaining, and no Webpack runtime
+present. Webpack, in conjunction with our plugin, performs this 'flattening' 
+and demodulification automatically.
 
 
-**Therefore:**
 
-Even though the browser can run ES modules, **GAS cannot deliver ES
-modules**.
-
-For this reason, **all UI code (even pure client-side code) must be
-bundled into a single flat `<script>` block**, with all imports
-resolved, no exports, and no Webpack runtime. The plugin performs this
-demodulification automatically.
 
 ### 2) How Load Order Can Be Leveraged to Manage Inter-Subsystem Dependencies
 
@@ -409,70 +443,27 @@ Control the verbosity of the plugin's diagnostic output. Accepted values are:
 
 Precedence and behavior:
 
-- If the environment variable `LOGLEVEL` is present and set to a valid value, it overrides the explicit `logLevel` option passed to the plugin. For example:
-  - `LOGLEVEL=debug npm run build` will enable debug output regardless of the plugin config's `logLevel` option.
-  - `LOGLEVEL=silent npm run build` will surpress all output except for warnings and errors. (useful for figuring out which tests in a suite failed without reams of log noise).
+- If the environment variable `LOGLEVEL` is present and set to a valid value, it overrides the explicit `logLevel` 
+  option passed to the plugin. For example:
+  - `LOGLEVEL=debug npm run build` will enable debug output regardless of the
+    plugin config's `logLevel` option.
+  - `LOGLEVEL=silent npm run build` will surpress all output except for warnings and errors. 
+     (useful for figuring out which tests in a suite failed without reams of log noise).
 - If `LOGLEVEL` is not set, the plugin uses the explicit `logLevel` option when provided.
 - If neither `LOGLEVEL` nor an explicit `logLevel` is provided, the default level is `info`.
-- Invalid log level values (from the environment or the explicit option) are treated as configuration errors and will cause the build to fail.
+- Invalid log level values (from the environment or the explicit option) are treated as configuration errors and 
+  will cause the build to fail.
 
-Tests may set `LOGLEVEL` in the environment or inject `logLevel` into fixture plugin instances. The environment variable takes precedence.
+Tests may set `LOGLEVEL` in the environment or inject `logLevel` into fixture plugin instances. 
+The environment variable takes precedence.
 
+## Design & Internals
 
-## Guidance For Plugin Maintainers
+If you’re interested in the internal architecture of this plugin or in contributing to its development, see:
 
-This section is targeted to developers interested in contributing (features, tests, fixes, etc.) to the 
-plugin itself, rather than plugin users. So far all development has been done by on nixos Linux. So
-MacOS or Windows developers may need to wing it a bit.
-
-
-### First-time setup
-
-Run the provided development setup script to install dependencies, compile, and run 
-the test-suite once. The script also checks your Node.js version.
-
-```sh
-git clone git@github.com:buildlackey/gas-demodulify-plugin.git
-cd gas-demodulify-plugin
-bash ./scripts/dev_setup.sh
-```
-
-This will leave the compiled artifacts in `dist/` and produce the packaged plugin under `dist/plugin` so samples and IDE runners will use the latest compiled code.
-
-### Why tests in an IDE may not use your edited source
-
-Some workflows (and the `samples/` projects) install the packaged plugin 
-from `dist/plugin` (for example `samples/with-source-maps` references `file:../../dist/plugin`). 
-When you run tests from an IDE or when a sample project 
-installs the plugin from disk, it will pick up the generated package under `dist/plugin` rather than 
-the TypeScript source you are editing in `src/`.
-
-That means: if you change source files in `src/` and then run tests from your IDE without 
-rebuilding the packaged plugin, the tests may still exercise the old compiled code under `dist/plugin`.
-
-We have a guard in place which warns you if the `dist/plugin` package is out-of-date with respect to the `src/` files.
-It will trigger when running tests from the IDE.  You will see: "Error: Stale dist detected."
-However, no such guard exists for the samples yet.
-
-### Commands to ensure tests use the latest source
-
-Before running tests from an IDE or from another project that depends on the packaged plugin, 
-make sure the compiled output and packaged plugin are up-to-date. The simplest sequence is:
-
-```sh
-# install deps (only needed once or when package.json changed)
-npm install
-
-# Packate plugin into dist/
-npm run release
-
-```
+- [Guidance for Plugin Maintainers](docs/guidance-for-plugin-maintainers.md)
+- [Plugin Design](docs/plugin-design.md)
 
 
-### Quick troubleshooting
-
-- If tests run in your IDE appear to be 'stale' (not reflecting recent edits), 
-re-run `npm run compile` before re-running tests from the IDE.
-- If a sample project shows an older plugin, make sure you rebuilt the properly packaged plugin via the command: `npm run release`.
-
-
+The design discussion also includes a discussion of how webpack typically fits into build pipelines which target
+GAS as an execution environment.
