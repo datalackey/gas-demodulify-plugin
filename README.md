@@ -1,5 +1,38 @@
 # gas-demodulify
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Support for Modern Architectures Comprised of Subsystems](#support-for-modern-architectures-comprised-of-subsystems)
+    - [UI subsystem](#ui-subsystem)
+    - [Backend (GAS) subsystem](#backend-gas-subsystem)
+    - [Common subsystem](#common-subsystem)
+    - [Example](#example)
+    - [What the Plugin Generates](#what-the-plugin-generates)
+        - [Backend bundle (`backend.gs`)](#1-backend-bundle-backendgs)
+        - [Common subsystem bundles](#2-common-subsystem-bundles)
+            - [COMMON for backend (`common.gs`)](#common-for-backend-commongs)
+            - [COMMON for UI (`common.html`)](#common-for-ui-commonhtml)
+        - [UI bundle (`ui.html`)](#3-ui-bundle-uihtml)
+- [Finer Points Regarding How Code Must Be Bundled for GAS](#finer-points-regarding-how-code-must-be-bundled-for-gas)
+    - [Why should client-side browser code be processed with Webpack at all?](#why-should-client-side-browser-code-be-processed-with-webpack-at-all)
+    - [How Load Order Can Be Leveraged to Manage Inter-Subsystem Dependencies](#how-load-order-can-be-leveraged-to-manage-inter-subsystem-dependencies)
+        - [GAS Load Order Constraints](#gas-load-order-constraints)
+- [Configuration](#configuration)
+    - [General Options](#general-options)
+        - [`module.exports.entry`](#moduleexportsentry)
+    - [Plugin Constructor Options](#plugin-constructor-options)
+        - [`namespaceRoot`](#namespaceroot)
+        - [`subsystem`](#subsystem)
+        - [`buildMode`](#buildmode)
+        - [`defaultExportName`](#defaultexportname)
+    - [Log level](#log-level)
+- [Design & Internals](#design--internals)
+
+
+
+## Overview
+
 A Webpack plugin that flattens modular TypeScript codebases into
 [Google Apps Script](https://workspace.google.com/products/apps-script/) (GAS)-safe
 JavaScript with clean **hierarchical
@@ -14,11 +47,14 @@ So, if your (Typescript) code base
 - has multiple subsystems, and 
 - you want your emitted GAS code to isolate code for each subsystem into its own namespace, and 
 - you are horrified at the prospect of using brittle search and replace on strings to post-modify webpack output 
+ 
 then this plugin is for you. 
+
 
 When generating code `gas-demodulify` completely discards Webpack’s emitted runtime artifacts 
 — including the __webpack_require__ 
-mechanism and its wrapping IIFE. Instead, it generates fresh, GAS-safe JavaScript
+mechanism and its wrapping [IIFE](https://developer.mozilla.org/en-US/docs/Glossary/IIFE). 
+Instead, it generates fresh, GAS-safe JavaScript
 compatible with both the GAS runtime and
 the [HtmlService](https://developers.google.com/apps-script/reference/html/html-service)
 delivery model using:
@@ -91,7 +127,7 @@ and flattened into plain top-level functions.
 
 ------------------------------------------------------------------------
 
-## Example
+### Example
 
 Suppose you are developing a Google Sheets add-on named **MyAddon**.
 
@@ -222,7 +258,7 @@ UI.
 
 ## Finer Points Regarding How Code Must Be Bundled for GAS
 
-### 1) Why should client-side browser code be processed with Webpack at all?
+### Why should client-side browser code be processed with Webpack at all?
 
 
 Although the UI code of a GAS add-on ultimately executes inside your
@@ -273,7 +309,7 @@ and demodulification automatically.
 
 
 
-### 2) How Load Order Can Be Leveraged to Manage Inter-Subsystem Dependencies
+### How Load Order Can Be Leveraged to Manage Inter-Subsystem Dependencies
 
 Most complex GAS add-ons begin with a tri-layer structure:
 
@@ -433,7 +469,7 @@ If defaultExportName is specified:
 >       });
 >
 >
-#### Log level
+### Log level
 
 Control the verbosity of the plugin's diagnostic output. Accepted values are:
 
