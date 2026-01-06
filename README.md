@@ -410,20 +410,25 @@ cause hard-to-diagnose bugs that change runtime behavior).
     - Bad: `export * from './utils'`
     - Good: `export { foo, bar } from './utils'`
 
-  - Avoid dynamic/conditional module loading patterns                                     >>> TODO - check enforced in code?
+  - Avoid dynamic/conditional module loading patterns                                     
     - Patterns such as dynamic `import(...)`, `require()` with non-static arguments, or runtime code generation 
-      that depends on bundler behavior are fragile and may not demodulify correctly.
-    - Fix: Prefer static imports/exports so Webpack can produce deterministic, statically-analyzable output.
-
-- Default export mapping
-  - If you rely on default exports, note that the plugin maps default exports to `defaultExport` 
-    unless you set `defaultExportName` in the plugin options.
-  - Fix: Either use named exports or set `defaultExportName` to an explicit symbol so consumers 
-    of the generated namespace have a stable name.
+      that depends on bundler behavior are fragile and may not demodulify correctly.  
+      For example: `const mod = require("./helpers/" + helperName);`
+    - Fix: Prefer static, unconditional imports/exports so Webpack can produce deterministic, statically-analyzable output.  
+      Note there is no enforcement of this by the plugin, but such patterns may lead to runtime errors.
 
 - Source files and source maps
   - The plugin strips some runtime helpers and rewrites lines; try to preserve source maps 
     during your toolchain if you rely on debugging information. Avoid constructs that cause significant codegen wrapper insertion.
+
+- Exactly one TypeScript entry module
+  - The plugin requires exactly one TypeScript-authored entry module per build. The entry module defines the 
+    entire public API surface exposed to the Google Apps Script runtime. All GAS-visible functions must 
+    be exported from this module, either directly or via explicit named re-exports. Other files may participate freely  in implementation via imports, but only the entry module’s exports are attached to the GAS namespace.
+    - Disallowed entry configurations
+        - The following are explicitly not supported, even though Webpack itself may allow them:
+            - Array-based entries, e.g.:    `entry: { gas: ["./a.ts", "./b.ts"] }`
+            - Glob-based or auto-discovered entries, e.g.: ` entry: { gas: glob.sync("src/gas/*.ts") }`
 
 
 ## Configuration
@@ -510,8 +515,13 @@ If defaultExportName is specified:
 >         defaultExportName: "main",
 >         logLevel: "info"
 >       });
->
->
+
+In this case, the default export is attached to the GAS namespace using the explicitly provided name main.
+
+> globalThis.MYADDON.UI.main = main;
+
+
+
 ### Log level
 
 Control the verbosity of the plugin's diagnostic output. Accepted values are:
