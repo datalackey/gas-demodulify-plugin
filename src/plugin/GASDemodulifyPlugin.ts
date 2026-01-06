@@ -3,67 +3,9 @@
 import type { Compiler } from "webpack";
 import { getEmitterFunc } from "./CodeEmitter";
 import { Logger } from "./Logger";
+import type { GASDemodulifyOptions } from "./options.schema";
 
-/**
- * Public configuration options for GASDemodulifyPlugin.
- *
- * These options are supplied by the consumer when constructing the plugin
- * instance in `webpack.config.js`.
- *
- * They control:
- *  - how emitted symbols are namespaced
- *  - which logical subsystem is being built
- *  - which artifacts are emitted
- *  - how much diagnostic output is produced
- */
-export interface GASDemodulifyOptions {
-    /**
-     * The root global namespace under which all generated symbols are attached.
-     *
-     * Example:
-     *   namespaceRoot: "MYADDON"
-     *
-     * This value becomes the first segment of every emitted namespace path.
-     */
-    namespaceRoot: string;
 
-    /**
-     * Logical subsystem name.
-     *
-     * Examples:
-     *  - "GAS"
-     *  - "UI"
-     *  - "COMMON"
-     *
-     * Combined with `namespaceRoot`, this produces the final namespace
-     * used for symbol attachment (e.g. "MYADDON.GAS").
-     */
-    subsystem: string;
-
-    /**
-     * Controls which artifacts are emitted by the plugin.
-     *
-     *  - "gas"    → emit `.gs` only
-     *  - "ui"     → emit `.html` only
-     *  - "common" → emit both `.gs` and `.html`
-     *
-     * NOTE:
-     * The current implementation wires this option through the plugin API,
-     * but artifact branching logic is handled elsewhere.
-     */
-    buildMode: "gas" | "ui" | "common";
-
-    /**
-     * Optional logging verbosity.
-     *
-     *  - "silent" → no output
-     *  - "info"   → high-level lifecycle messages
-     *  - "debug"  → detailed internal diagnostics
-     *
-     * If omitted, logging defaults to "silent".
-     */
-    logLevel?: "silent" | "info" | "debug";
-}
 
 /**
  * Webpack plugin entrypoint for gas-demodulify.
