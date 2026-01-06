@@ -4,8 +4,7 @@ import type { Compiler } from "webpack";
 import { getEmitterFunc } from "./CodeEmitter";
 import { Logger } from "./Logger";
 import type { GASDemodulifyOptions } from "./options.schema";
-
-
+import { validateAndNormalizeOptions } from "./validateAndNormalizeOptions";
 
 /**
  * Webpack plugin entrypoint for gas-demodulify.
@@ -28,15 +27,16 @@ class GASDemodulifyPlugin {
      *
      * @param options User-supplied plugin configuration
      */
-    constructor(options: GASDemodulifyOptions) {
-        this.options = options;
-        Logger.setLevel(options.logLevel);
+    constructor(unvalidatedOptions?: unknown) {
+        this.options = validateAndNormalizeOptions(unvalidatedOptions);
+
+        Logger.setLevel(this.options.logLevel);
 
         Logger.info(
             `Initialized GASDemodulifyPlugin ` +
-            `(namespaceRoot=${options.namespaceRoot}, ` +
-            `subsystem=${options.subsystem}, ` +
-            `buildMode=${options.buildMode})`
+            `(namespaceRoot=${this.options.namespaceRoot}, ` +
+            `subsystem=${this.options.subsystem}, ` +
+            `buildMode=${this.options.buildMode})`
         );
     }
 

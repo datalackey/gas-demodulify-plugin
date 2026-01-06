@@ -1,12 +1,9 @@
 import { DemodulifyOptionsSchema, GASDemodulifyOptions } from "./options.schema";
 
 /**
- * Parse, validate, and default user-supplied plugin options.
- *
- * This is intentionally separate from the constructor so it can be unit tested
- * without invoking Webpack.
+ * Parse, validate, and normalize (i.e., apply defaults where field is missing) the user-supplied plugin options.
  */
-export function resolveDemodulifyOptions(
+export function validateAndNormalizeOptions(
     input?: unknown
 ): GASDemodulifyOptions {
     // If caller passes nothing, we still want schema defaults to apply.
