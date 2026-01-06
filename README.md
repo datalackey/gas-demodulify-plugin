@@ -2,7 +2,7 @@
 
 ## Table of Contents
 
-- [Overview](#overview)
+- [Plugin Overview](#plugin-overview)
 - [Support for Modern Architectures Comprised of Subsystems](#support-for-modern-architectures-comprised-of-subsystems)
     - [UI subsystem](#ui-subsystem)
     - [Backend (GAS) subsystem](#backend-gas-subsystem)
@@ -31,7 +31,7 @@
 
 
 
-## Overview
+## Plugin Overview
 
 A Webpack plugin that flattens modular TypeScript codebases into
 [Google Apps Script](https://workspace.google.com/products/apps-script/) (GAS)-safe
@@ -41,34 +41,34 @@ add-on extension](https://developers.google.com/apps-script/guides/sheets).
 This plugin was originally intended to serve as the core of an opinionated build
 system for such extensions. Most existing Webpack-based tooling and GAS starter repos deal with
 simple codebases and flat scripts, but fail when applied to more
-complex architectures.  
+complex architectures.
 
-So, if your (Typescript) code base 
-- has multiple subsystems, and 
-- you want your emitted GAS code to isolate code for each subsystem into its own namespace, and 
-- you are horrified at the prospect of using brittle search and replace on strings to post-modify webpack output 
- 
-then this plugin is for you. 
+So, if your (Typescript) code base
+- has multiple subsystems, and
+- you want your emitted GAS code to isolate code for each subsystem into its own namespace, and
+- you are horrified at the prospect of using brittle search and replace on strings to post-modify webpack output
+
+then this plugin is for you.
 
 
-When generating code `gas-demodulify` completely discards Webpack’s emitted runtime artifacts 
-— including the __webpack_require__ 
-mechanism and its wrapping [IIFE](https://developer.mozilla.org/en-US/docs/Glossary/IIFE). 
+When generating code `gas-demodulify` completely discards Webpack’s emitted runtime artifacts
+— including the __webpack_require__
+mechanism and its wrapping [IIFE](https://developer.mozilla.org/en-US/docs/Glossary/IIFE).
 Instead, it generates fresh, GAS-safe JavaScript
 compatible with both the GAS runtime and
 the [HtmlService](https://developers.google.com/apps-script/reference/html/html-service)
 delivery model using:
 
-- user supplied namespace configuration metadata 
-- transpiled module sources provided by Webpack’s compilation pipeline 
+- user supplied namespace configuration metadata
+- transpiled module sources provided by Webpack’s compilation pipeline
  (after module dependency resolution and type-checking, but before runtime execution)
 
 
 
 
-## Support for Modern Architectures Comprised of Subsystems 
+## Support for Modern Architectures Comprised of Subsystems
 
-A modern architecture for a complex GAS add-on typically comprises subsystems, with a common organization 
+A modern architecture for a complex GAS add-on typically comprises subsystems, with a common organization
 breaking down into: **ui**, **backend (gas)**, and **common**.  We will describe the operation of the plugin assuming
 this tri-layer organization, but the plugin can be adapted to other architectures as well,
 as discussed in the configuration section, below.
@@ -80,7 +80,7 @@ The UI subsystem typically consists of:
 - HTMLService dialogs    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but  pushed 'raw' by clasp)
 - Sidebar interfaces     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but  pushed 'raw' by clasp)
 - svg images for icons   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but  pushed 'raw' by clasp)
-- Client-side controller logic running in browser 
+- Client-side controller logic running in browser
 - Multi-step orchestration flows unsuitable for pure GAS execution
 
 ### Backend (GAS) subsystem
@@ -97,30 +97,30 @@ This subsystem contains:
 
 This subsystem hosts shared utility code that must exist in **both** UI and backend bundles:
 
-- Logging support 
+- Logging support
 - Data models
 - Any reusable logic shared across UI and backend
 
 This tri-layer architecture reflects the natural separation required by
 Apps Script: `ui` code runs in a browser iframe, `backend` code runs in the
-GAS runtime, and `common` code must be bundled twice. The double bundling of `common`  code 
-is necessary because we need to make common code available in two different generated code artifacts. One is to 
-be included in the HTML served to 
-the client via 
+GAS runtime, and `common` code must be bundled twice. The double bundling of `common`  code
+is necessary because we need to make common code available in two different generated code artifacts. One is to
+be included in the HTML served to
+the client via
 [HtmlService.createHtmlOutputFromFile](https://developers.google.com/apps-script/reference/html/html-service#createHtmlOutputFromFile(String)),
-and this requires the code live in a file with extension '.html'.  The other is to 
+and this requires the code live in a file with extension '.html'.  The other is to
 be included in the server-side GAS code, and thus must have extension '.gs'.
 
 
-A normal Webpack build cannot satisfy the above requirements, as well as some of the more subtle 
+A normal Webpack build cannot satisfy the above requirements, as well as some of the more subtle
 requirements  discussed in [this section](#finer-points-regarding-how-code-must-be-bundled-for-gas)
 .
 Furthermore, Google Apps Script cannot:
 - run Webpack's module runtime, `__webpack_require__`,
-- nor its wrapping IIFE, 
-- nor resolve its internal module map. 
- 
-Modern TypeScript/ESM code must therefore be **demodulified** — stripped of all the webpack require stuff, 
+- nor its wrapping IIFE,
+- nor resolve its internal module map.
+
+Modern TypeScript/ESM code must therefore be **demodulified** — stripped of all the webpack require stuff,
 and flattened into plain top-level functions.
 
 **gas-demodulify** performs exactly this transformation.
@@ -263,8 +263,10 @@ UI.
 
 Although the UI code of a GAS add-on ultimately executes inside your
 browser (for example, within a dialog or sidebar iframe),
-the browser never receives your JavaScript as a distinct chunk separate from the surrounding mark-up. 
-All UI code must be delivered through HtmlService, which expects you to load exactly one HTML file,
+the browser never receives your JavaScript as a distinct chunk separate from the surrounding mark-up.
+All UI code must be delivered through GAS's
+[HtmlService](https://developers.google.com/apps-script/reference/html/html-service),
+which expects you to load exactly one HTML file,
 with all JavaScript imports resolved and all code inlined and delivered
 together with the HTML markup as a single unit.
 
@@ -292,18 +294,18 @@ Google Apps Script does not provide such a delivery model. HtmlService emits
 a single, generated HTML document and does not expose a web server capable
 of responding to follow-on requests for JavaScript modules. As a result,
 there are no URL-addressable resources corresponding to ./main.js (or any
-other imported module), and ES module loading via 
+other imported module), and ES module loading via
 
 ```html
 <script type="module">
 ```
 
-is fundamentally unsupported in GAS. Therefore:
-Even though the browser environment itself is fully capable of executing ES, GAS cannot deliver ES modules.
-For this reason, all UI code—even purely client-side code—must be bundled
+is fundamentally unsupported in GAS. Therefore, even though the
+browser environment itself is fully capable of executing ES, GAS cannot deliver ES modules.
+For this reason, all UI code must be bundled
 into a single, flat `<script>` block, with all imports resolved ahead of
 time, no import or export syntax remaining, and no Webpack runtime
-present. Webpack, in conjunction with our plugin, performs this 'flattening' 
+present. Webpack, in conjunction with our plugin, performs this 'flattening'
 and demodulification automatically.
 
 
@@ -327,7 +329,7 @@ But some grow to include additional layers, such as:
 - `forms`
 
 Each of these may depend on others, and the load order of generated
-`.gs` files becomes important.   
+`.gs` files becomes important.
 
 #### GAS Load Order Constraints
 
@@ -360,21 +362,21 @@ and choose names accordingly, but you can handle this entirely via webpack confi
 tedious post-processing required.
 
 At a minimum: ensure that your `common` bundle is named
-so that it sorts before any other `.gs` bundles that depend on it, using `output.filename`. 
-For example the configuration below would produce an output file named `00_common.[contenthash].gs`, 
+so that it sorts before any other `.gs` bundles that depend on it, using `output.filename`.
+For example the configuration below would produce an output file named `00_common.[contenthash].gs`,
 which sorts before `01_gas.[contenthash].gs` and `02_charts.[contenthash].gs` etc.
 
-```javascript 
+```javascript
 
     module.exports = {
-    
+
        ....
-        
+
       entry: {
         common: "./src/common/index.ts",
       }
         ...
-            
+
       output: {
         filename: "00_[name].[contenthash].gs"
       }
@@ -383,13 +385,54 @@ which sorts before `01_gas.[contenthash].gs` and `02_charts.[contenthash].gs` et
 
 ------------------------------------------------------------------------
 
+## Restrictions
+
+This plugin enforces a small set of source-level and build-time restrictions.
+Please design your code to avoid the following patterns; violations will
+either be rejected by the plugin at build time or code you want to keep will be stripped (which may
+cause hard-to-diagnose bugs that change runtime behavior).
+
+
+
+- Forbidden Webpack runtime artifacts
+  - Any substring matching the values in [FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS](src/plugin/invariants.ts) 
+    is not allowed in emitted output.  Currently,  this includes:
+    - `__webpack_` (any Webpack helper/runtime identifier)
+    - `.__esModule` (ES module interop artifact)
+  - Rationale: GAS cannot execute Webpack's module runtime (for example `__webpack_require__`) or interop boilerplate. 
+  - Fix: Remove direct references to Webpack internals from your source. 
+
+- No wildcard re-exports
+  - Patterns rejected: `export * from './module'`, `export * as ns from './module'`, and bare `export *`.
+  - Rationale: wildcard re-exports create a non-deterministic export surface which cannot be 
+    reliably flattened to a single GAS namespace.
+  - Fix: Replace wildcard re-exports with explicit, named re-exports, for example:
+    - Bad: `export * from './utils'`
+    - Good: `export { foo, bar } from './utils'`
+
+  - Avoid dynamic/conditional module loading patterns                                     >>> TODO - check enforced in code?
+    - Patterns such as dynamic `import(...)`, `require()` with non-static arguments, or runtime code generation 
+      that depends on bundler behavior are fragile and may not demodulify correctly.
+    - Fix: Prefer static imports/exports so Webpack can produce deterministic, statically-analyzable output.
+
+- Default export mapping
+  - If you rely on default exports, note that the plugin maps default exports to `defaultExport` 
+    unless you set `defaultExportName` in the plugin options.
+  - Fix: Either use named exports or set `defaultExportName` to an explicit symbol so consumers 
+    of the generated namespace have a stable name.
+
+- Source files and source maps
+  - The plugin strips some runtime helpers and rewrites lines; try to preserve source maps 
+    during your toolchain if you rely on debugging information. Avoid constructs that cause significant codegen wrapper insertion.
+
+
 ## Configuration
 
 
-### General Options 
+### General Options
 
 
-#### module.exports.entry 
+#### module.exports.entry
 
 The emitted output filename is derived from the Webpack entrypoint name.
 For example, an entry named gas will emit gas.gs. This was discussed in more detail in the previous section.
@@ -479,18 +522,18 @@ Control the verbosity of the plugin's diagnostic output. Accepted values are:
 
 Precedence and behavior:
 
-- If the environment variable `LOGLEVEL` is present and set to a valid value, it overrides the explicit `logLevel` 
+- If the environment variable `LOGLEVEL` is present and set to a valid value, it overrides the explicit `logLevel`
   option passed to the plugin. For example:
   - `LOGLEVEL=debug npm run build` will enable debug output regardless of the
     plugin config's `logLevel` option.
-  - `LOGLEVEL=silent npm run build` will surpress all output except for warnings and errors. 
+  - `LOGLEVEL=silent npm run build` will surpress all output except for warnings and errors.
      (useful for figuring out which tests in a suite failed without reams of log noise).
 - If `LOGLEVEL` is not set, the plugin uses the explicit `logLevel` option when provided.
 - If neither `LOGLEVEL` nor an explicit `logLevel` is provided, the default level is `info`.
-- Invalid log level values (from the environment or the explicit option) are treated as configuration errors and 
+- Invalid log level values (from the environment or the explicit option) are treated as configuration errors and
   will cause the build to fail.
 
-Tests may set `LOGLEVEL` in the environment or inject `logLevel` into fixture plugin instances. 
+Tests may set `LOGLEVEL` in the environment or inject `logLevel` into fixture plugin instances.
 The environment variable takes precedence.
 
 ## Design & Internals
@@ -503,3 +546,6 @@ If you’re interested in the internal architecture of this plugin or in contrib
 
 The design discussion also includes a discussion of how webpack typically fits into build pipelines which target
 GAS as an execution environment.
+
+
+

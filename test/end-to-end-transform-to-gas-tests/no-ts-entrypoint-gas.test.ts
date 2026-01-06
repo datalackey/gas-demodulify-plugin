@@ -2,7 +2,7 @@ import path from "path";
 import { runWebpack } from "../utils/runWebpack";
 
 test(
-    "fails when no TypeScript entrypoint exists",
+    "no-ts-entrypoint-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,

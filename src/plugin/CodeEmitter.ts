@@ -161,13 +161,17 @@ export function getEmitterFunc(
         const sanitizedSource = sanitizeWebpackHelpers(rawSource);
         Logger.info("Sanitized transpiled module source");
 
-        // Discover the explicit export surface of the entry module.
+        // Discover the explicit export surface of the entry module -- raise error if none found
         const exportBindings = getExportBindings(
             compilation,
             entry.entryModule,
             opts
         );
         Logger.info(`Discovered ${exportBindings.length} exported symbol(s)`);
+        if (exportBindings.length === 0) {
+            throw new Error("No exported symbols found in TypeScript entrypoint");
+        }
+
 
         // Assemble final GAS-safe output.
         const output = getGasSafeOutput(
@@ -340,26 +344,17 @@ function assertNoWildcardReexports(
         for (const module of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
             const resource = (module as any)?.resource;
 
-            console.log("one");
-
             // Prefer source-level detection for TS-authored files.
             if (typeof resource === "string" && (resource.endsWith(".ts") || resource.endsWith(".tsx"))) {
-
-                console.log("two");
-
                 const abs = path.isAbsolute(resource)
                     ? resource
                     : path.resolve(
                         (compilation as any).options?.context ?? process.cwd(),
                         resource
                     );
-
                 if (fs.existsSync(abs)) {
-
-                    console.log("3");
                     const content = fs.readFileSync(abs, "utf8");
                     if (exportStarRe.test(content)) {
-                        console.log("4");
                         throw unsupportedWildcardError(`Module: ${abs}`);
                     }
                 }
@@ -370,7 +365,7 @@ function assertNoWildcardReexports(
                 compilation.moduleGraph.getExportsInfo(module);
             const other = exportsInfo.otherExportsInfo;
 
-            if (other && other.provided !== false) {
+            if (other && other.provided === true) {
                 throw unsupportedWildcardError(
                     `Module: ${resource ?? "<synthetic>"}`
                 );
