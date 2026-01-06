@@ -21,4 +21,4 @@ fi
 echo "Node.js version OK: $NODE_VERSION_RAW"
 
 npm install
-npm run release
+npm run package:release
