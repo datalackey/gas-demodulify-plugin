@@ -11,8 +11,7 @@ module.exports = {
 
     output: {
     path: path.join(__dirname, "dist"),
-    filename: "[name].js"
-
+    filename: "IGNORED-BY-DEMODULIFY"
   },
   module: {
     rules: [

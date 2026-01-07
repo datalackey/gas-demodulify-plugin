@@ -8,8 +8,9 @@ module.exports = {
         gas: path.resolve(__dirname, "src/gas/index.ts")
     },
     output: {
-        path: path.resolve(__dirname, "dist"),
-        filename: "[name].js"
+        path: path.join(__dirname, "dist"),
+        filename: "IGNORED-BY-DEMODULIFY"
+
     },
     resolve: {
         extensions: [".ts", ".js"]
@@ -30,4 +31,3 @@ module.exports = {
         })
     ]
 };
-
