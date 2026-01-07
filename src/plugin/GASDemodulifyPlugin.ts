@@ -6,12 +6,13 @@ import { Logger } from "./Logger";
 import type { GASDemodulifyOptions } from "./options.schema";
 import { validateAndNormalizeOptions } from "./validateAndNormalizeOptions";
 
+
 /**
  * Webpack plugin entrypoint for gas-demodulify.
  *
  * This class is responsible for:
+ *  - asserting valid Webpack configuration and expected invariants
  *  - registering compilation hooks
- *  - constructing a logger
  *  - delegating all demodulification logic to CodeEmitter
  *
  * Design notes:
@@ -49,6 +50,8 @@ class GASDemodulifyPlugin {
      * @param compiler The active Webpack compiler instance
      */
     apply(compiler: Compiler) {
+        assertOutputFileIgnored(compiler);
+        assertSingleEntry(compiler);
 
         /**
          * The `thisCompilation` hook fires once for each build execution.
@@ -62,7 +65,6 @@ class GASDemodulifyPlugin {
             "GASDemodulifyPlugin",
             compilation => {
                 Logger.info("Starting GAS demodulification for new compilation");
-                Logger.debug("Entered hook: 'thisCompilation'");
 
                 /**
                  * The `processAssets` hook allows mutation of emitted assets
@@ -97,5 +99,63 @@ class GASDemodulifyPlugin {
         );
     }
 }
+
+
+function assertOutputFileIgnored(compiler: Compiler) {
+    const output = compiler.options.output;
+    const filename = output?.filename;
+
+    if (filename !== "IGNORED-BY-DEMODULIFY") {
+        throw new Error(
+            [
+                "Invalid Webpack output configuration for GASDemodulifyPlugin.",
+                "",
+                "When GASDemodulifyPlugin is used, Webpack output is ignored.",
+                "You must explicitly acknowledge this by setting:",
+                "",
+                '  output: { filename: "IGNORED-BY-DEMODULIFY" }',
+                "",
+                "Any other value — including omission of `output.filename` — is not allowed."
+            ].join("\n")
+        );
+    }
+}
+
+function assertSingleEntry(compiler: Compiler) {
+    const entry = compiler.options.entry;
+
+    if (!entry) {
+        throw new Error(
+            "GASDemodulifyPlugin requires a Webpack entry object with exactly one entrypoint"
+        );
+    }
+    if (typeof entry === "function") {
+        throw new Error(
+            "GASDemodulifyPlugin requires exactly one Webpack entry (function entries are not supported)"
+        );
+    }
+    if (typeof entry === "string") {
+        throw new Error(
+            "GASDemodulifyPlugin requires an object-based Webpack entry with exactly one named entrypoint"
+        );
+    }
+    if (Array.isArray(entry)) {
+        throw new Error(
+            "GASDemodulifyPlugin requires exactly one Webpack entry (array entries are not supported)"
+        );
+    }
+    if (typeof entry === "object") {
+        const keys = Object.keys(entry);
+        if (keys.length !== 1) {
+            throw new Error(
+                `GASDemodulifyPlugin requires exactly one Webpack entry, but found ${keys.length}: [${keys.join(", ")}]`
+            );
+        }
+        return;
+    }
+
+    throw new Error("Unsupported Webpack entry configuration");
+}
+
 
 module.exports = GASDemodulifyPlugin;

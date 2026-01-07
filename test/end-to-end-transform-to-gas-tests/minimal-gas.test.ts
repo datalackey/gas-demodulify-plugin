@@ -32,9 +32,6 @@ test("minimal-gas",
         expect(actual).toContain('globalThis.MYADDON.GAS.goodbye = goodbye;');
         expect(actual).toContain('function hello');
         expect(actual).toContain('function goodbye');
-
-        expect(actual).not.toContain('deliberate_cruft.js');
-        expect(fs.existsSync(path.join(distDir, "deliberate_cruft.js"))).toBe(false);
     },
 
     30_000

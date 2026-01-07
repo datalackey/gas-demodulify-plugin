@@ -1,19 +1,20 @@
 const path = require("path");
-const GASDemodulifyPlugin = require("../../../../dist")
+const GASDemodulifyPlugin = require("../../../../dist");
 
 module.exports = {
   mode: "production",
   context: __dirname,
 
   entry: {
-    backend: "./src/gas/index.ts",
+    gasA: "./src/gas/a.ts",
+    gasB: "./src/gas/b.ts"
   },
 
-    output: {
+  output: {
     path: path.join(__dirname, "dist"),
-    filename: "[name].js"
-
+    filename: "IGNORED-BY-DEMODULIFY"
   },
+
   module: {
     rules: [
       {
@@ -22,6 +23,7 @@ module.exports = {
       }
     ]
   },
+
   plugins: [
     new GASDemodulifyPlugin({
       namespaceRoot: "MYADDON",
