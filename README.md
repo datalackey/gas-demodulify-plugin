@@ -313,7 +313,7 @@ and demodulification automatically.
 
 
 
-### How Load Order Can Be Leveraged to Manage Inter-Subsystem Dependencies
+### How Load Order Can Be Leveraged to Manage Inter-Subsystem Dependencies -- OBSOLETE
 
 Most complex GAS add-ons begin with a tri-layer structure:
 
@@ -432,7 +432,16 @@ cause hard-to-diagnose bugs that change runtime behavior).
         - The following are explicitly not supported, even though Webpack itself may allow them:
             - Array-based entries, e.g.:    `entry: { gas: ["./a.ts", "./b.ts"] }`
             - Glob-based or auto-discovered entries, e.g.: ` entry: { gas: glob.sync("src/gas/*.ts") }`
+  - See [here](docs/plugin-design.md#why-exactly-one-webpack-entry-is-required) for more details.
 
+-  Output filename is intentionally ignored
+    - When gas-demodulify is enabled, we ignore, and actually delete the JavaScript bundle that 
+      Webpack would otherwise emit. This is because that bundle contains runtime artifacts that GAS 
+      cannot execute. To make this obvious and avoid accidental misuse, the plugin requires a sentinel value
+      be specified for `output.filename` in your Webpack config: `output: { filename: "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME" ...`
+      Any other value — including omitting `output.filename` — is rejected.
+   - See [here](docs/plugin-design.md#how-gas-demodulify-separates-wheat-application-code-from-chaff-webpack-boilerplate) 
+     for more details.
 
 ## Configuration
 
@@ -443,8 +452,8 @@ cause hard-to-diagnose bugs that change runtime behavior).
 #### module.exports.entry
 
 The emitted output filename is derived from the Webpack entrypoint name.
-For example, an entry named gas will emit gas.gs. This was discussed in more detail in the previous section.
-
+For example, an entry named gas will emit gas.gs. This was discussed in more detail in the previous section's 
+discusion of the restriction *Exactly one TypeScript entry module*.
 
 
 
@@ -461,17 +470,16 @@ a standard Javascript dictionary:
 >       });
 
 
+You can call the plugin with an empty options object, and all options will take their default values.
+
 
 #### *namespaceRoot*
 
 The top-level global namespace under which all generated symbols will be attached (e.g. MYADDON, MyCompany.ProjectFoo).
+- Default: DEFAULT
 
 
 #### *subsystem*
-
-       namespaceRoot: "MYADDON"
-       subsystem: "UI"
-
 In most projects, this is a single identifier such as `UI`, `GAS`, or `COMMON`, and for the example above
 we get the namespace: `MYADDON.UI` Advanced users may specify a dotted path to create deeper hierarchy:
 
@@ -479,6 +487,7 @@ we get the namespace: `MYADDON.UI` Advanced users may specify a dotted path to c
        subsystem: "UI.Dialogs"
 
 Which produces `MYADDON.UI.Dialogs`
+- Default: DEFAULT 
 
 
 #### *buildMode*
@@ -489,13 +498,15 @@ Controls which artifacts are emitted:
 - "ui" → emits .html with inline script tags
 - "common" → emits both .gs and .html
 
+- Default: gas
 
 #### *defaultExportName*
 
 Controls how default exports are attached to the GAS namespace.
+If this option is provided, the default export is mapped to the specified symbol name.
 
-If this option *is* provided, the default export is mapped to the specified symbol name.
-If this option *is not* provided, default exports are mapped to the symbol `defaultExport`.
+- Default: - defaultExport
+
 
 ###### Example
 
@@ -548,6 +559,8 @@ Precedence and behavior:
 
 Tests may set `LOGLEVEL` in the environment or inject `logLevel` into fixture plugin instances.
 The environment variable takes precedence.
+
+- Default: info
 
 ## Design & Internals
 

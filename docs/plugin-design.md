@@ -1,6 +1,4 @@
-
 # Plugin Design
-
 
 - [Introduction](#introduction)
 - [Simple Example](#simple-example)
@@ -8,11 +6,12 @@
     - [If Webpack Output Fails in GAS, Why Use It at All?](#if-webpack-output-fails-in-gas-why-use-it-at-all)
 - [How gas-demodulify Separates Wheat (Application Code) from Chaff (Webpack Boilerplate)](#how-gas-demodulify-separates-wheat-application-code-from-chaff-webpack-boilerplate)
     - [Key Design Responsibilities of the Code Emitter](#key-design-responsibilities-of-the-code-emitter)
-        - [Select reachable modules only](#1-select-reachable-modules-only)
-        - [Strip all Webpack runtime constructs](#2-strip-all-webpack-runtime-constructs)
-        - [Rewrite module contents as top-level code](#3-rewrite-module-contents-as-top-level-code)
-        - [Bind imports via explicit symbol resolution](#4-bind-imports-via-explicit-symbol-resolution)
-        - [Attach exports to explicit namespaces](#5-attach-exports-to-explicit-namespaces)
+        - [1. Select reachable modules only](#1-select-reachable-modules-only)
+        - [2. Strip all Webpack runtime constructs](#2-strip-all-webpack-runtime-constructs)
+        - [3. Rewrite module contents as top-level code](#3-rewrite-module-contents-as-top-level-code)
+        - [4. Bind imports via explicit symbol resolution](#4-bind-imports-via-explicit-symbol-resolution)
+        - [5. Attach exports to explicit namespaces](#5-attach-exports-to-explicit-namespaces)
+- [Why Exactly One Webpack Entry Is Required](#why-exactly-one-webpack-entry-is-required)
 - [Addenda: Understanding webpack_require](#addenda-understanding-webpack_require)
 
 
@@ -195,22 +194,31 @@ solves that problem reliably.
 ## How gas-demodulify Separates Wheat (Application Code) from Chaff (Webpack Boilerplate)
 
 
-
-At a high level, **gas-demodulify** positions itself inside Webpack’s compilation
+At a high level, `gas-demodulify` positions itself inside Webpack’s compilation
 pipeline, after module resolution and transpilation have completed, but **before**
 Webpack emits its final runtime bundle.
+The core logic responsible for emitting GAS-safe output lives in
+[CodeEmitter.ts](../src/plugin/CodeEmitter.ts), which replaces Webpack’s standard bundle emitter with one
+tailored to GAS’s execution model.
 
-Rather than treating Webpack’s output as an opaque string to be post-processed,
-the plugin operates on structured compilation data that Webpack already provides.
+So, rather than treating Webpack’s output as an opaque string to be post-processed,
+`CodeEmitter` operates on structured compilation data that Webpack provides.
 In particular, it consumes:
 
 - Webpack’s resolved module graph
 - Transpiled module source code
 - Symbol and dependency metadata for each module
 
-The core logic responsible for emitting GAS-safe output lives in
-[CodeEmitter.ts](../src/plugin/CodeEmitter.ts), which replaces Webpack’s standard bundle emitter with one
-tailored to GAS’s execution model.
+
+Webpack’s standard output bundle is actually deliberately deleted by the plugin.
+If we did not delete it, and you were able to examine its content you would see all manner of 
+GAS-incompatible Webpack runtime constructs (`__webpack_require__`, etc.) 
+This is why we mandate that `output.filename` be set to 
+`OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME`.  This makes it clear that whatever value you pick for that 
+configuration setting, it will be ignored in favor of `module.entry : {  outputname: './some/path/somefile.ts' }`.
+
+
+
 
 ---
 
@@ -230,18 +238,18 @@ No runtime loader, no module cache, and no synthetic export objects are emitted.
 Constructs such as `__webpack_require__`, module factory wrappers, and IIFEs
 are intentionally omitted.
 
-### 3. Rewrite module contents as top-level code
+#### 3. Rewrite module contents as top-level code
 
 Each module’s executable statements are emitted as plain JavaScript at the
 top level. This ensures that GAS can discover triggers, menu handlers, and
 callable functions using its normal global-scope scanning rules.
 
-### 4. Bind imports via explicit symbol resolution
+#### 4. Bind imports via explicit symbol resolution
 
 Instead of runtime `require` calls, imported symbols are resolved statically
 and rewritten as references to previously emitted bindings.
 
-### 5. Attach exports to explicit namespaces
+#### 5. Attach exports to explicit namespaces
 
 Exported symbols are attached directly to user-defined global namespaces
 (for example `MYADDON.GAS` or `MYADDON.UI`), avoiding any reliance on `this`,
@@ -256,6 +264,45 @@ while still supporting complex dependency graphs and large codebases.
 The extensive inline comments in **`CodeEmitter.js`** document the precise
 invariants and assumptions relied upon during emission. Readers interested in
 modifying or extending the plugin are encouraged to start there.
+
+
+## Why Exactly One Webpack Entry Is Required
+
+`gas-demodulify` encourages (and enforces) a build model where each subsystem is packaged independently:
+- one build 
+- one package.json
+- one Webpack configuration
+- one entrypoint that defines the subsystem's public API surface.
+- one output artifact.
+
+This aligns with Google Apps Script’s single-global-scope execution model and ensures deterministic, 
+collision-free output. As an example of what could go wrong if multiple entries were allowed, consider 
+the following scenario, where a build has two entrypoints that both import the same dependency (lodash):
+
+- entryA → imports lodash
+- entryB → imports lodash
+
+In a normal Webpack environment, this is safe. Each entry’s dependency graph is
+wrapped, scoped, and coordinated at runtime. Shared dependencies such as lodash
+are de-duplicated or isolated by the module system. GAS
+provides none of those guarantees:
+
+- all code executes in a single, flat global scope
+- there is no module loader
+- there is no runtime isolation
+- there is no mechanism to safely coordinate shared dependencies
+
+Allowing multiple entries would therefore result in the same dependency being
+emitted more than once, with helpers, [polyfills](https://developer.mozilla.org/en-US/docs/Glossary/Polyfill), 
+and internal symbols colliding at the top level. Even when the duplicated code is byte-for-byte identical, the
+resulting behavior is undefined and may fail in subtle ways.
+
+For this reason, gas-demodulify treats the Webpack entrypoint as the single
+execution root for a build. All reachable code is flattened from that root,
+emitted exactly once, and attached to a single, explicit namespace. If a
+project grows large enough to require multiple independent API surfaces, the
+correct solution is multiple builds, not multiple entries.
+
 
 
 
