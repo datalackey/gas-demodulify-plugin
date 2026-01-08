@@ -26,7 +26,7 @@ class GASDemodulifyPlugin {
     /**
      * Constructs a new GASDemodulifyPlugin instance.
      *
-     * @param options User-supplied plugin configuration
+     * @param unvalidatedOptions User-supplied plugin configuration (will be validated)
      */
     constructor(unvalidatedOptions?: unknown) {
         this.options = validateAndNormalizeOptions(unvalidatedOptions);
@@ -159,3 +159,6 @@ function assertSingleEntry(compiler: Compiler) {
 
 
 module.exports = GASDemodulifyPlugin;
+
+// Provide an ES default export so tests that import from the TS source succeed
+export default GASDemodulifyPlugin;

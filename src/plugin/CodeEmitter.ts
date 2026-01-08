@@ -8,6 +8,9 @@ import path from "path";
 import { Logger } from "./Logger";
 import { FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS } from "./invariants";
 
+// Sentinel filename used in fixtures and to mark transient Webpack bundle assets.
+export const OUTPUT_BUNDLE_FILENAME_TO_DELETE = "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME";
+
 /**
  * This module contains the code responsible for flattening a single Webpack
  * TypeScript entrypoint into a GAS-safe global namespace.
@@ -560,8 +563,6 @@ function renderNamespaceInit(namespace: string): string {
  * In gas-demodulify builds, JavaScript output is transient and must not
  * be written to disk.
  */
-
-export const OUTPUT_BUNDLE_FILENAME_TO_DELETE = "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME";
 
 function cleanupUnwantedOutputFiles(compilation: Compilation) {
 
