@@ -63,7 +63,7 @@ delivery model using:
 - transpiled module sources provided by Webpack’s compilation pipeline
  (after module dependency resolution and type-checking, but before runtime execution)
 
-Caveat: Our plugin disallows certain patterns and configurations, in both source code and Webpack config,
+Caveat: Our plugin disallows certain patterns and configurations -- in both source code and Webpack config --
 that produce invalid GAS code. See the [Restrictions](#restrictions) section for details.
 
 

@@ -158,7 +158,6 @@ function assertSingleEntry(compiler: Compiler) {
 }
 
 
-module.exports = GASDemodulifyPlugin;
-
+module.exports = GASDemodulifyPlugin;   // TODO - better to have only one export method
 // Provide an ES default export so tests that import from the TS source succeed
 export default GASDemodulifyPlugin;
