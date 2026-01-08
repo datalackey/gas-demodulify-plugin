@@ -11,7 +11,7 @@ module.exports = {
 
   output: {
     path: path.join(__dirname, "dist"),
-    filename: "IGNORED-BY-DEMODULIFY"
+    filename: "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME"
   },
 
   plugins: [

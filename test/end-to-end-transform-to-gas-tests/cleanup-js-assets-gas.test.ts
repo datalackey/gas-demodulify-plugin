@@ -25,12 +25,12 @@ test(
 
         const files = fs.readdirSync(distDir);
 
-        // ❌ No JS files may remain
-        const jsFiles = files.filter(f => f.endsWith(".js"));
-        expect(jsFiles).toEqual([]);
+        // The dist directory must contain exactly one .ts file and nothing else
+        const tsFiles = files.filter(f => f.endsWith('.gs'));
+        expect(tsFiles.length).toBe(1);
+        // No other files allowed
+        expect(files.length).toBe(1);
 
-        // ✅ GAS output must exist
-        expect(files).toContain("gas.gs");
     },
     20_000
 );

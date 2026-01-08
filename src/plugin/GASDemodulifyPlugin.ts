@@ -105,7 +105,7 @@ function assertOutputFileIgnored(compiler: Compiler) {
     const output = compiler.options.output;
     const filename = output?.filename;
 
-    if (filename !== "IGNORED-BY-DEMODULIFY") {
+    if (filename !== "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME") {
         throw new Error(
             [
                 "Invalid Webpack output configuration for GASDemodulifyPlugin.",
@@ -113,7 +113,7 @@ function assertOutputFileIgnored(compiler: Compiler) {
                 "When GASDemodulifyPlugin is used, Webpack output is ignored.",
                 "You must explicitly acknowledge this by setting:",
                 "",
-                '  output: { filename: "IGNORED-BY-DEMODULIFY" }',
+                '  output: { filename: "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME" }',
                 "",
                 "Any other value — including omission of `output.filename` — is not allowed."
             ].join("\n")

@@ -182,7 +182,7 @@ export function getEmitterFunc(
         Logger.info("Assembled GAS-safe output");
 
         // Delete all `.js` artifacts emitted by Webpack.
-        cleanupJsAssets(compilation);
+        cleanupUnwantedOutputFiles(compilation);
         Logger.info("Removed transient Webpack JavaScript artifacts");
 
         // Output filename is derived from the Webpack entry name.
@@ -560,12 +560,23 @@ function renderNamespaceInit(namespace: string): string {
  * In gas-demodulify builds, JavaScript output is transient and must not
  * be written to disk.
  */
-function cleanupJsAssets(
-    compilation: Compilation
-) {
-    for (const name of Object.keys(compilation.assets)) {
-        if (name.endsWith(".js")) {
-            compilation.deleteAsset(name);
+
+export const OUTPUT_BUNDLE_FILENAME_TO_DELETE = "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME";
+
+function cleanupUnwantedOutputFiles(compilation: Compilation) {
+
+    for (const assetName of Object.keys(compilation.assets)) {
+        // 🔥 Always delete JS output
+        if (assetName.endsWith(".js")) {
+            Logger.debug(`Deleting JS asset: ${assetName}`);
+            compilation.deleteAsset(assetName);
+            continue;
+        }
+
+        // 🔥 Always delete the sentinel output filename
+        if (assetName === OUTPUT_BUNDLE_FILENAME_TO_DELETE) {
+            Logger.debug(`Deleting sentinel output asset: ${assetName}`);
+            compilation.deleteAsset(assetName);
         }
     }
 }

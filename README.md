@@ -426,7 +426,8 @@ cause hard-to-diagnose bugs that change runtime behavior).
 - Exactly one TypeScript entry module
   - The plugin requires exactly one TypeScript-authored entry module per build. The entry module defines the 
     entire public API surface exposed to the Google Apps Script runtime. All GAS-visible functions must 
-    be exported from this module, either directly or via explicit named re-exports. Other files may participate freely  in implementation via imports, but only the entry module’s exports are attached to the GAS namespace.
+    be exported from this module, either directly or via explicit named re-exports. Other files may participate 
+    freely  in implementation via imports, but only the entry module’s exports are attached to the GAS namespace.
     - Disallowed entry configurations
         - The following are explicitly not supported, even though Webpack itself may allow them:
             - Array-based entries, e.g.:    `entry: { gas: ["./a.ts", "./b.ts"] }`
