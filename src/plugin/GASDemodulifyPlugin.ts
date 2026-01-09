@@ -134,7 +134,7 @@ function assertSingleEntry(compiler: Compiler) {
             "GASDemodulifyPlugin requires exactly one Webpack entry (function entries are not supported)"
         );
     }
-    if (typeof entry === "string") {
+    if (typeof (entry as any) === "string") {
         throw new Error(
             "GASDemodulifyPlugin requires an object-based Webpack entry with exactly one named entrypoint"
         );

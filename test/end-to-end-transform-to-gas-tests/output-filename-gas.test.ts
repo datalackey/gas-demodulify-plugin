@@ -20,7 +20,6 @@ test(
 
         const files = fs.readdirSync(distDir);
 
-        // ❌ This will FAIL with current implementation
         expect(files).toContain("gas.gs");
 
         // Optional sanity check
