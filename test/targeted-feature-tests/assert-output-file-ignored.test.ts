@@ -1,7 +1,7 @@
 import GASDemodulifyPlugin from "../../src/plugin/GASDemodulifyPlugin";
 import {
     OUTPUT_BUNDLE_FILENAME_TO_DELETE
-} from "../../src/plugin/CodeEmitter";
+} from "../../src/plugin/code-emission/CodeEmitter";
 import type { Compiler } from "webpack";
 
 /**

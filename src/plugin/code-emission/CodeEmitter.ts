@@ -5,8 +5,8 @@ import { sources } from "webpack";
 import dedent from "ts-dedent";
 import fs from "fs";
 import path from "path";
-import { Logger } from "./Logger";
-import { FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS } from "./invariants";
+import { Logger } from "../Logger";
+import { FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS } from "../invariants";
 import type { EmitterOpts, ExportBinding, ResolvedEntrypoint } from "./types";
 import { resolveTsEntrypoint, assertNoWildcardReexports } from "./resolvers";
 
@@ -529,3 +529,4 @@ function cleanupUnwantedOutputFiles(compilation: Compilation) {
         }
     }
 }
+

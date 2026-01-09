@@ -198,7 +198,7 @@ At a high level, `gas-demodulify` positions itself inside Webpack’s compilatio
 pipeline, after module resolution and transpilation have completed, but **before**
 Webpack emits its final runtime bundle.
 The core logic responsible for emitting GAS-safe output lives in
-[CodeEmitter.ts](../src/plugin/CodeEmitter.ts), which replaces Webpack’s standard bundle emitter with one
+[CodeEmitter.ts](../src/plugin/code-emission/CodeEmitter.ts), which replaces Webpack’s standard bundle emitter with one
 tailored to GAS’s execution model.
 
 So, rather than treating Webpack’s output as an opaque string to be post-processed,

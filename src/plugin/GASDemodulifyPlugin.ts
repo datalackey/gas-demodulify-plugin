@@ -1,7 +1,7 @@
 // File: `src/plugin/GASDemodulifyPlugin.ts`
 
 import type { Compiler } from "webpack";
-import { getEmitterFunc } from "./CodeEmitter";
+import { getEmitterFunc } from "./code-emission/CodeEmitter";
 import { Logger } from "./Logger";
 import type { GASDemodulifyOptions } from "./options.schema";
 import { validateAndNormalizePluginOptions } from "./validateAndNormalizePluginOptions";

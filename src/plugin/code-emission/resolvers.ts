@@ -1,7 +1,7 @@
 import type { Compilation, Module } from "webpack";
 import fs from "fs";
 import path from "path";
-import { Logger } from "./Logger";
+import { Logger } from "../Logger";
 import type { ResolvedEntrypoint } from "./types";
 
 /**
@@ -118,4 +118,3 @@ function unsupportedWildcardError(details?: string): Error {
         ].join("\n")
     );
 }
-
