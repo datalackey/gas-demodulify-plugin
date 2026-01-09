@@ -1,14 +1,15 @@
 import path from "path";
 import fs from "fs";
 import { runWebpack } from "../utils/runWebpack";
+import { readStrippedFile } from "../utils/readStrippedFile";
 
 test(
-    "output-filename-gas",
+    "reexport-entrypoint-missing-exports-gas",
     async () => {
         const fixtureDir = path.join(
             __dirname,
             "fixtures",
-            "output-filename-gas"
+            "reexport-entrypoint-missing-exports-gas"
         );
 
         const distDir = path.join(fixtureDir, "dist");
@@ -16,14 +17,9 @@ test(
         fs.rmSync(distDir, { recursive: true, force: true });
         fs.mkdirSync(distDir, { recursive: true });
 
-        await runWebpack(path.join(fixtureDir, "webpack.config.js"));
-
-        const files = fs.readdirSync(distDir);
-
-        expect(files).toContain("gas.gs");
-
-        // Optional sanity check
-        expect(files).not.toContain("backend.gs");
+        await expect(
+            runWebpack(path.join(fixtureDir, "webpack.config.js"))
+        ).rejects.toThrow(/gas-demodulify: Unable to emit code for module/);
     },
-    20_000
+    30_000
 );

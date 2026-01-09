@@ -28,8 +28,7 @@ module.exports = {
       namespaceRoot: "MYADDON",
       subsystem: "GAS",
       buildMode: "gas",
-      logLevel: "info"
-      // NOTE: defaultExportName NOT provided
+      logLevel: "debug"
     })
   ]
 };

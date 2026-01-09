@@ -36,8 +36,8 @@ export const Logger = {
             return;
         }
 
-        const validated = validateLogLevel(String(configured));
-        currentLevel = validated;
+        // assign directly to avoid redundant local variable
+        currentLevel = validateLogLevel(String(configured));
     },
 
     info(msg: string) {
@@ -58,6 +58,11 @@ export const Logger = {
 
     error(msg: string) {
         console.error(`[gas-demodulify][error] ${msg}`);
+    },
+
+    // Query helpers
+    isDebug(): boolean {
+        return currentLevel === "debug";
     }
 };
 
@@ -69,4 +74,3 @@ function validateLogLevel(value: string): LogLevel {
     }
     throw new Error(`Invalid LOGLEVEL value '${value}'. Expected one of: silent, info, debug.`);
 }
-
