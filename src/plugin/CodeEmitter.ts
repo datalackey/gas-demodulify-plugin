@@ -153,17 +153,6 @@ export function getEmitterFunc(
         assertNoWildcardReexports(compilation, entry);
         Logger.info("Validated export surface (no wildcard re-exports)");
 
-        // Extract transpiled JavaScript source for the entry module.
-        const rawSource = getModuleSource(
-            compilation,
-            entry.entryModule,
-            entry.runtime
-        );
-
-        // Remove Webpack helper artifacts that GAS cannot execute.
-        const sanitizedSource = sanitizeWebpackHelpers(rawSource);
-        Logger.info("Sanitized transpiled module source");
-
         // Discover the explicit export surface of the entry module -- raise error if none found
         const exportBindings = getExportBindings(
             compilation,
@@ -175,6 +164,35 @@ export function getEmitterFunc(
             throw new Error("No exported symbols found in TypeScript entrypoint");
         }
 
+        /**
+         * IMPORTANT:
+         * The entry module must ALWAYS be emitted (even if it only contains re-exports),
+         * because it may contain top-level side effects.
+         *
+         * Additionally, re-exported symbols (e.g. `export { onOpen } from "./triggers"`)
+         * are not locally defined in the entry module. In those cases we must also emit
+         * the module that actually defines the symbol, otherwise we will generate
+         * namespace assignments to identifiers that do not exist at runtime.
+         *
+         * Finally, to avoid dropping reachable executable code, we emit all modules
+         * reachable from the entry chunks (Webpack already did reachability pruning).
+         */
+        const modulesToEmit = collectModulesToEmit(
+            compilation,
+            entry,
+            exportBindings
+        );
+
+        // Extract transpiled JavaScript source for the selected modules.
+        const rawSource = getCombinedModuleSource(
+            compilation,
+            modulesToEmit,
+            entry.runtime
+        );
+
+        // Remove Webpack helper artifacts that GAS cannot execute.
+        const sanitizedSource = sanitizeWebpackHelpers(rawSource);
+        Logger.info("Sanitized transpiled module source");
 
         // Assemble final GAS-safe output.
         const output = getGasSafeOutput(
@@ -452,7 +470,7 @@ function getGasSafeOutput(
     moduleSource: string,
     exports: ExportBinding[]
 ) {
-    const output =  dedent`
+    const output = dedent`
         ${renderNamespaceInit(namespace)}
 
         // Module code (transpiled)
@@ -495,6 +513,207 @@ function getModuleSource(
 }
 
 /**
+ * Combine the transpiled sources for multiple Webpack modules into a single string.
+ * This is required to support re-export-only entrypoints, where the exported symbol's
+ * definition lives in a different module than the entry module.
+ */
+function getCombinedModuleSource(
+    compilation: Compilation,
+    modules: Module[],
+    runtime: any
+): string {
+    const parts: string[] = [];
+
+    Logger.debug(
+        `getCombinedModuleSource: combining ${modules.length} module(s) for runtime=` +
+        `${String(runtime)}`
+    );
+
+    for (const m of modules) {
+        const resource = (m as any)?.resource ?? "<no-resource>";
+        const identifier =
+            typeof (m as any)?.identifier === "function"
+                ? (m as any).identifier()
+                : "<no-identifier>";
+        Logger.debug(
+            `getCombinedModuleSource: reading module resource=${resource} identifier=${identifier}`
+        );
+
+        const src = getModuleSource(compilation, m, runtime);
+
+        Logger.debug(
+            `getCombinedModuleSource: module resource=${resource} -> ` +
+            `sourceLength=${src ? String(src.length) : "0"}`
+        );
+
+        if (src && src.trim()) {
+            parts.push(src);
+        } else {
+            Logger.debug(
+                `getCombinedModuleSource: skipping empty source for module resource=${resource}`
+            );
+        }
+    }
+
+    const combined = parts.join("\n");
+
+    Logger.debug(
+        `getCombinedModuleSource: combinedLength=${combined.length} ` +
+        `(kept ${parts.length}/${modules.length} module(s))`
+    );
+
+    return combined;
+}
+
+/**
+ * Choose the set of modules to emit.
+ *
+ * Requirements:
+ *  - Always include the entry module (may contain top-level side effects)
+ *  - Include the defining module for any re-exported exported symbol
+ *  - Include all modules reachable from the entry chunks to avoid dropping
+ *    executable code that Webpack determined was reachable
+ */
+function collectModulesToEmit(
+    compilation: Compilation,
+    entry: ResolvedEntrypoint,
+    exports: ExportBinding[]
+): Module[] {
+    const set = new Set<Module>();
+
+    const entryResource = (entry.entryModule as any)?.resource ?? "<no-resource>";
+    Logger.debug(
+        `collectModulesToEmit: start; entryName=${entry.entryName} entryResource=${entryResource} ` +
+        `chunks=${entry.chunks.length} exportCount=${exports.length}`
+    );
+
+    // Always include the entry module (side effects)
+    set.add(entry.entryModule);
+    Logger.debug(`collectModulesToEmit: added entry module resource=${entryResource}`);
+
+    // Include all reachable modules from the entry chunks (preserve reachable code)
+    let reachableCount = 0;
+    for (const chunk of entry.chunks) {
+        const chunkName = (chunk as any)?.name ?? "<no-name>";
+        const chunkId = (chunk as any)?.id ?? "<no-id>";
+        Logger.debug(`collectModulesToEmit: scanning chunk name=${chunkName} id=${String(chunkId)}`);
+
+        for (const m of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
+            reachableCount++;
+            set.add(m);
+
+            const res = (m as any)?.resource ?? "<no-resource>";
+            if (reachableCount <= 25) {
+                // avoid flooding logs in big graphs
+                Logger.debug(`collectModulesToEmit: reachable module added resource=${res}`);
+            }
+        }
+    }
+    Logger.debug(`collectModulesToEmit: reachable modules seen=${reachableCount} (dedup via Set)`);
+
+    // Include defining modules for exported symbols (re-export support)
+    for (const e of exports) {
+        Logger.debug(`collectModulesToEmit: resolving defining module for export=${e.exportName}`);
+        const defining = resolveExportDefiningModule(
+            compilation,
+            entry.entryModule,
+            e.exportName
+        );
+
+        const definingRes = (defining as any)?.resource ?? "<no-resource>";
+        Logger.debug(
+            `collectModulesToEmit: export=${e.exportName} definingModuleResource=${definingRes}`
+        );
+
+        set.add(defining);
+    }
+
+    const out = Array.from(set);
+
+    Logger.debug(`collectModulesToEmit: final modulesToEmit=${out.length}`);
+
+    for (let i = 0; i < Math.min(out.length, 25); i++) {
+        const m = out[i];
+        const res = (m as any)?.resource ?? "<no-resource>";
+        const identifier =
+            typeof (m as any)?.identifier === "function"
+                ? (m as any).identifier()
+                : "<no-identifier>";
+        Logger.debug(`collectModulesToEmit: [${i}] resource=${res} identifier=${identifier}`);
+    }
+    if (out.length > 25) {
+        Logger.debug(`collectModulesToEmit: (truncated module list; ${out.length - 25} more)`);
+    }
+
+    return out;
+}
+
+
+/**
+ * Resolve the module that actually defines an exported symbol.
+ *
+ * For re-exports like:
+ *    export { onOpen } from "./triggers";
+ *
+ * Webpack records the export on the entry module, but the identifier is not locally defined.
+ * We must locate the target module that provides the symbol and emit it as well.
+ */
+function resolveExportDefiningModule(
+    compilation: Compilation,
+    entryModule: Module,
+    exportName: string
+): Module {
+    const exportsInfo =
+        compilation.moduleGraph.getExportsInfo(entryModule);
+
+    const entryRes = (entryModule as any)?.resource ?? "<no-resource>";
+    Logger.debug(
+        `resolveExportDefiningModule: entryResource=${entryRes} export=${exportName}`
+    );
+
+    // Webpack's ExportInfo API is not fully reflected in our TS types; use `any` to stay compatible.
+    const exportInfo: any = (exportsInfo as any).getExportInfo(exportName);
+
+    Logger.debug(
+        `resolveExportDefiningModule: export=${exportName} exportInfo=` +
+        `${exportInfo ? "present" : "missing"} provided=${String(exportInfo?.provided)}`
+    );
+
+    // FIRST: check whether this export is a re-export.
+    // Re-exports may still have `provided === true`, so this must take precedence.
+    const target: any = exportInfo?.getTarget?.(compilation.moduleGraph);
+
+    const targetModuleRes =
+        target?.module
+            ? ((target.module as any)?.resource ?? "<no-resource>")
+            : "<no-target-module>";
+
+    Logger.debug(
+        `resolveExportDefiningModule: export=${exportName} target=` +
+        `${target ? "present" : "missing"} targetModuleResource=${targetModuleRes}`
+    );
+
+    if (target?.module) {
+        return target.module as Module;
+    }
+
+    // SECOND: if there is no re-export target, and Webpack says this module
+    // provides the export, then it must be locally declared.
+    if (exportInfo?.provided === true) {
+        Logger.debug(
+            `resolveExportDefiningModule: export=${exportName} treated as locally declared in entry module`
+        );
+        return entryModule;
+    }
+
+    // Otherwise, we cannot resolve the defining module.
+    throw new Error(
+        `Unable to resolve defining module for export '${exportName}'`
+    );
+}
+
+
+/**
  * Removes Webpack codegen helper artifacts from the module body.
  * Comments out illegal lines to try to preserve line number of the source line for source map debugging.
  */
@@ -512,7 +731,7 @@ function sanitizeWebpackHelpers(source: string): string {
             const commentedLine =
                 `// [dropped-by-gas-demodulify]: ${trimmedLine}`
                     .replace("webpack", "WEBPACK")
-                    .replace("esModule","ES_MODULE");
+                    .replace("esModule", "ES_MODULE");
             out.push(commentedLine);
         } else {
             out.push(line);
