@@ -4,7 +4,7 @@ import type { Compiler } from "webpack";
 import { getEmitterFunc } from "./CodeEmitter";
 import { Logger } from "./Logger";
 import type { GASDemodulifyOptions } from "./options.schema";
-import { validateAndNormalizeOptions } from "./validateAndNormalizeOptions";
+import { validateAndNormalizePluginOptions } from "./validateAndNormalizePluginOptions";
 
 
 /**
@@ -29,7 +29,7 @@ class GASDemodulifyPlugin {
      * @param unvalidatedOptions User-supplied plugin configuration (will be validated)
      */
     constructor(unvalidatedOptions?: unknown) {
-        this.options = validateAndNormalizeOptions(unvalidatedOptions);
+        this.options = validateAndNormalizePluginOptions(unvalidatedOptions);
 
         Logger.setLevel(this.options.logLevel);
 

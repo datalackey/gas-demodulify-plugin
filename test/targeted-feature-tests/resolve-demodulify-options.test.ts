@@ -1,8 +1,8 @@
-import { validateAndNormalizeOptions } from "../../src/plugin/validateAndNormalizeOptions";
+import { validateAndNormalizePluginOptions } from "../../src/plugin/validateAndNormalizePluginOptions";
 
 describe("resolveDemodulifyOptions", () => {
     test("returns schema defaults when input is undefined", () => {
-        const opts = validateAndNormalizeOptions(undefined);
+        const opts = validateAndNormalizePluginOptions(undefined);
 
         expect(opts).toEqual({
             namespaceRoot: "DEFAULT",
@@ -13,7 +13,7 @@ describe("resolveDemodulifyOptions", () => {
     });
 
     test("accepts valid overrides", () => {
-        const opts = validateAndNormalizeOptions({
+        const opts = validateAndNormalizePluginOptions({
             namespaceRoot: "MYADDON",
             subsystem: "GAS",
             buildMode: "ui",
@@ -29,7 +29,7 @@ describe("resolveDemodulifyOptions", () => {
     });
 
     test("applies defaults for omitted optional fields", () => {
-        const opts = validateAndNormalizeOptions({
+        const opts = validateAndNormalizePluginOptions({
             namespaceRoot: "MYADDON",
             subsystem: "UI",
             buildMode: "common",
@@ -46,7 +46,7 @@ describe("resolveDemodulifyOptions", () => {
 
     test("rejects empty namespaceRoot", () => {
         expect(() =>
-            validateAndNormalizeOptions({
+            validateAndNormalizePluginOptions({
                 namespaceRoot: "",
                 subsystem: "GAS",
                 buildMode: "gas",
@@ -56,7 +56,7 @@ describe("resolveDemodulifyOptions", () => {
 
     test("rejects empty subsystem", () => {
         expect(() =>
-            validateAndNormalizeOptions({
+            validateAndNormalizePluginOptions({
                 namespaceRoot: "MYADDON",
                 subsystem: "",
                 buildMode: "gas",
@@ -66,7 +66,7 @@ describe("resolveDemodulifyOptions", () => {
 
     test("rejects invalid buildMode", () => {
         expect(() =>
-            validateAndNormalizeOptions({
+            validateAndNormalizePluginOptions({
                 namespaceRoot: "MYADDON",
                 subsystem: "GAS",
                 buildMode: "wat",
@@ -76,7 +76,7 @@ describe("resolveDemodulifyOptions", () => {
 
     test("rejects invalid logLevel", () => {
         expect(() =>
-            validateAndNormalizeOptions({
+            validateAndNormalizePluginOptions({
                 namespaceRoot: "MYADDON",
                 subsystem: "GAS",
                 buildMode: "gas",
