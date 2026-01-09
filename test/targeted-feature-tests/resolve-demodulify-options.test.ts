@@ -1,4 +1,4 @@
-import { validateAndNormalizePluginOptions } from "../../src/plugin/validateAndNormalizePluginOptions";
+import { validateAndNormalizePluginOptions } from "../../src/plugin/plugin-configuration-options/validateAndNormalizePluginOptions";
 
 describe("resolveDemodulifyOptions", () => {
     test("returns schema defaults when input is undefined", () => {

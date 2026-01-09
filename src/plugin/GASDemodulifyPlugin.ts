@@ -3,8 +3,8 @@
 import type { Compiler } from "webpack";
 import { getEmitterFunc } from "./code-emission/CodeEmitter";
 import { Logger } from "./Logger";
-import type { GASDemodulifyOptions } from "./options.schema";
-import { validateAndNormalizePluginOptions } from "./validateAndNormalizePluginOptions";
+import type { GASDemodulifyOptions } from "./plugin-configuration-options/options.schema";
+import { validateAndNormalizePluginOptions } from "./plugin-configuration-options/validateAndNormalizePluginOptions";
 
 
 /**
