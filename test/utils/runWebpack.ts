@@ -2,7 +2,7 @@ import webpack from "webpack";
 import fs from "fs";
 import path from "path";
 import {
-    FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS
+    FORBIDDEN_WEBPACK_RUNTIME_PATTERNS
 } from "../../src/plugin/invariants";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -57,14 +57,15 @@ export function runWebpack(configPath: string): Promise<void> {
                 // Strip comments so that commented-out helper lines do not trigger invariants
                 const uncommented = strip(content);
 
-                for (const forbidden of FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS) {
-                    if (uncommented.includes(forbidden)) {
+                for (const pattern of FORBIDDEN_WEBPACK_RUNTIME_PATTERNS) {
+                    if (pattern.test(uncommented)) {
                         offenders.push(
-                            `${fullPath} (found: ${forbidden})`
+                            `${fullPath} (matched: ${pattern})`
                         );
                         break;
                     }
                 }
+
             }
 
             if (offenders.length > 0) {

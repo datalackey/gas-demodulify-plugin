@@ -3,10 +3,10 @@
 import type { Compilation, Module } from "webpack";
 import { sources } from "webpack";
 import dedent from "ts-dedent";
-import fs from "fs";
-import path from "path";
+import strip from "strip-comments";
+
 import { Logger } from "../Logger";
-import { FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS } from "../invariants";
+import {FORBIDDEN_WEBPACK_RUNTIME_PATTERNS } from "../invariants";
 import type { EmitterOpts, ExportBinding, ResolvedEntrypoint } from "./types";
 import { resolveTsEntrypoint, assertNoWildcardReexports } from "./resolvers";
 
@@ -454,40 +454,45 @@ function sanitizeWebpackHelpers(source: string): string {
     let removed = 0;
 
     for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (trimmedLine.includes("webpack") || trimmedLine.includes("esModule")) {
+        const violated = FORBIDDEN_WEBPACK_RUNTIME_PATTERNS.some(re =>
+            re.test(line)
+        );
+
+        if (violated) {
             removed++;
-            const commentedLine =
-                `// [dropped-by-gas-demodulify]: ${trimmedLine}`
-                    .replace("webpack", "WEBPACK")
-                    .replace("esModule", "ES_MODULE");
-            out.push(commentedLine);
+            out.push(
+                `// [dropped-by-gas-demodulify]: ${line.trim()}`
+            );
         } else {
             out.push(line);
         }
     }
 
     if (removed > 0) {
-        Logger.debug(`Stripped ${removed} Webpack helper line(s)`);
+        Logger.debug(`Stripped ${removed} lines with forbidden Webpack artifact(s)`);
     }
 
     return out.join("\n");
 }
 
+
 /**
  * Non-fatal runtime invariant check: surface any leaked webpack runtime artifacts
  */
 function warnIfWebpackRuntimeLeaked(output: string, context: string) {
-    for (const forbidden of FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS) {
-        if (output.includes(forbidden)) {
+    const uncommented = strip(output);           // we don't care about illegal Webpack artfiacts in comments
+    for (const re of FORBIDDEN_WEBPACK_RUNTIME_PATTERNS) {
+        if (re.test(uncommented)) {
             Logger.error(
-                `Internal invariant violated: Webpack runtime artifact '${forbidden}' ` +
-                `detected in emitted GAS output (${context}). This indicates a demodulification bug.`
+                `Internal invariant violated: forbidden Webpack artifact ` +
+                `'${re}' detected in emitted GAS output (${context}).`
             );
             return;
         }
     }
 }
+
+
 
 /**
  * Emits a GAS-safe hierarchical namespace initializer.
