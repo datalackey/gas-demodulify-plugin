@@ -6,7 +6,7 @@ import {
 } from "../../src/plugin/invariants";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const strip = require('strip-comments');
+const strip = require("strip-comments");
 
 /**
  * Global GAS safety invariants enforced for all Webpack-based tests.
@@ -20,21 +20,37 @@ const INVARIANT_MSG =
 /**
  * Runs Webpack for a fixture config and enforces GAS output invariants.
  *
- * This function is intentionally opinionated:
- * - If Webpack emits runtime helpers into .gs files, the test FAILS
- * - All tests that call runWebpack are subject to the same constraints
+ * IMPORTANT:
+ * - Any compilation error (even if Webpack does not mark the build as failed)
+ *   causes this Promise to reject.
  */
 export function runWebpack(configPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
-        // Allow CommonJS fixture configs -- can't import from dynamic paths
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const config = require(configPath);
 
         webpack(config, (err, stats) => {
-            if (err) return reject(err);
+            // 1. Fatal compiler error
+            if (err) {
+                return reject(err);
+            }
 
-            if (stats?.hasErrors()) {
-                return reject(stats.toJson().errors);
+            // 2. ANY compilation errors (plugin throws land here)
+            const compilationErrors =
+                stats?.compilation?.errors ?? [];
+
+            if (compilationErrors.length > 0) {
+                const message = compilationErrors
+                    .map(e =>
+                        e instanceof Error
+                            ? e.message
+                            : typeof e === "string"
+                                ? e
+                                : String(e)
+                    )
+                    .join("\n\n");
+
+                return reject(new Error(message));
             }
 
             const outputDir = path.join(
@@ -54,7 +70,6 @@ export function runWebpack(configPath: string): Promise<void> {
                 const fullPath = path.join(outputDir, file);
                 const content = fs.readFileSync(fullPath, "utf8");
 
-                // Strip comments so that commented-out helper lines do not trigger invariants
                 const uncommented = strip(content);
 
                 for (const pattern of FORBIDDEN_WEBPACK_RUNTIME_PATTERNS) {
@@ -65,7 +80,6 @@ export function runWebpack(configPath: string): Promise<void> {
                         break;
                     }
                 }
-
             }
 
             if (offenders.length > 0) {

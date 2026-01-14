@@ -3,7 +3,6 @@
 import type { Compilation, Module } from "webpack";
 import { sources } from "webpack";
 import dedent from "ts-dedent";
-import strip from "strip-comments";
 import fs from "fs";
 
 import { Logger } from "../Logger";
@@ -22,19 +21,14 @@ export const OUTPUT_BUNDLE_FILENAME_TO_DELETE =
     "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME";
 
 /**
- * ENFORCED LIMITATION:
- * -------------------
- * Aliased re-exports of imported symbols are NOT supported.
+ * ENFORCED ENTRY MODULE RESTRICTIONS
+ * ---------------------------------
  *
- * Example (unsupported):
- *   export { onOpen as handleOpen } from "./triggers";
+ * ❌ Aliased re-exports are NOT supported:
+ *     export { foo as bar } from "./mod";
  *
- * Reason:
- * - Re-exports do not create runtime identifiers
- * - Webpack erases alias intent before this plugin runs
- * - GAS requires real top-level bindings
- *
- * Therefore we FAIL FAST when this syntax is detected.
+ * ✅ Non-aliased re-exports ARE supported:
+ *     export { foo } from "./mod";
  */
 export function getEmitterFunc(
     compilation: Compilation,
@@ -49,7 +43,7 @@ export function getEmitterFunc(
         const entry = resolveTsEntrypoint(compilation);
         Logger.info(`Resolved TypeScript entrypoint '${entry.entryName}'`);
 
-        // 🚨 HARD FAIL: detect unsupported re-export syntax
+        // 🚨 HARD FAIL: aliased re-exports only
         assertNoAliasedReexportsInEntry(entry.entryModule);
 
         assertNoWildcardReexports(compilation, entry);
@@ -63,7 +57,9 @@ export function getEmitterFunc(
         );
 
         if (exportBindings.length === 0) {
-            throw new Error("No exported symbols found in TypeScript entrypoint");
+            throwEmitError(
+                "No exported symbols found in TypeScript entrypoint."
+            );
         }
 
         const modulesToEmit = collectModulesToEmit(
@@ -76,6 +72,10 @@ export function getEmitterFunc(
             compilation,
             modulesToEmit,
             entry.runtime
+        );
+        assertAllExportsHaveRuntimeDefinitions(
+            exportBindings,
+            rawSource
         );
 
         const sanitizedSource = sanitizeWebpackHelpers(rawSource);
@@ -96,7 +96,17 @@ export function getEmitterFunc(
 }
 
 // ======================================================
-// 🚨 NEW: Regex-based guard (authoritative)
+// Canonical error helper
+// ======================================================
+
+function throwEmitError(detail: string): never {
+    throw new Error(
+        `gas-demodulify: Unable to emit code for module.\n${detail}`
+    );
+}
+
+// ======================================================
+// 🚨 Aliased re-export guard (ONLY unsafe case)
 // ======================================================
 
 function assertNoAliasedReexportsInEntry(entryModule: Module) {
@@ -105,33 +115,20 @@ function assertNoAliasedReexportsInEntry(entryModule: Module) {
 
     const source = fs.readFileSync(resource, "utf8");
 
-    // Matches: export { foo as bar } from "./x";
     const ALIASED_REEXPORT_RE =
-        /export\s*\{[^}]*\bas\b[^}]*\}\s*from\s*['"][^'"]+['"]/g;
+        /export\s*\{[^}]*\bas\b[^}]*\}\s*from\s*['"][^'"]+['"]/;
 
     if (ALIASED_REEXPORT_RE.test(source)) {
-        throw new Error(
-            [
-                `Unsupported aliased re-export detected in entry module.`,
-                ``,
-                `This plugin does not support:`,
-                `  export { foo as bar } from "...";`,
-                ``,
-                `Reason:`,
-                `  - Re-exports do not create runtime identifiers`,
-                `  - Webpack removes alias information`,
-                `  - GAS requires real top-level functions`,
-                ``,
-                `Fix:`,
-                `  import { foo } from "...";`,
-                `  export function bar() { return foo(); }`
-            ].join("\n")
+        throwEmitError(
+            "Unsupported aliased re-export detected in entry module.\n" +
+            "Aliased re-exports do not create runtime identifiers in GAS.\n" +
+            "Define a local wrapper function instead."
         );
     }
 }
 
 // ======================================================
-// Export surface resolution (safe cases only)
+// Export surface resolution
 // ======================================================
 
 function getExportBindings(
@@ -167,7 +164,7 @@ function getExportBindings(
 }
 
 // ======================================================
-// Helpers (unchanged)
+// Helpers
 // ======================================================
 
 function getGasSafeOutput(
@@ -259,9 +256,44 @@ function cleanupUnwantedOutputFiles(
     compilation: Compilation
 ) {
     for (const assetName of Object.keys(compilation.assets)) {
-        if (assetName.endsWith(".js") ||
-            assetName === OUTPUT_BUNDLE_FILENAME_TO_DELETE) {
+        if (
+            assetName.endsWith(".js") ||
+            assetName === OUTPUT_BUNDLE_FILENAME_TO_DELETE
+        ) {
             compilation.deleteAsset(assetName);
+        }
+    }
+}
+
+function assertAllExportsHaveRuntimeDefinitions(
+    exports: ExportBinding[],
+    source: string
+) {
+    for (const exp of exports) {
+        // Default exports are synthetic bindings
+        if (exp.webpackExportName === "default") {
+            continue;
+        }
+
+        const name = exp.localName;
+
+        const hasFunction =
+            new RegExp(`function\\s+${name}\\s*\\(`).test(source);
+
+        const hasClass =
+            new RegExp(`class\\s+${name}\\b`).test(source);
+
+        const hasConst =
+            new RegExp(`(?:const|let|var)\\s+${name}\\b`).test(source);
+
+        if (!hasFunction && !hasClass && !hasConst) {
+            throwEmitError(
+                `Exported symbol '${name}' has no runtime definition.\n` +
+                `This usually means the symbol was re-exported without anchoring its defining module.\n\n` +
+                `Fix:\n` +
+                `  import "./<defining-module>";\n` +
+                `or define the function directly in the entry module.`
+            );
         }
     }
 }
