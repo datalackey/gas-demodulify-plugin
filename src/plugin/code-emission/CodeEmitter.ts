@@ -4,6 +4,7 @@ import type { Compilation, Module } from "webpack";
 import { sources } from "webpack";
 import dedent from "ts-dedent";
 import strip from "strip-comments";
+import fs from "fs";
 
 import { Logger } from "../Logger";
 import { FORBIDDEN_WEBPACK_RUNTIME_PATTERNS } from "../invariants";
@@ -17,26 +18,23 @@ import {
     assertNoWildcardReexports
 } from "./resolvers";
 
-// Sentinel filename used in fixtures and to mark transient Webpack bundle assets.
 export const OUTPUT_BUNDLE_FILENAME_TO_DELETE =
     "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME";
 
 /**
- * IMPORTANT LIMITATION (ENFORCED):
+ * ENFORCED LIMITATION:
+ * -------------------
+ * Aliased re-exports of imported symbols are NOT supported.
  *
- * Aliased re-exports such as:
- *
+ * Example (unsupported):
  *   export { onOpen as handleOpen } from "./triggers";
  *
- * do NOT create a runtime identifier named `handleOpen`.
+ * Reason:
+ * - Re-exports do not create runtime identifiers
+ * - Webpack erases alias intent before this plugin runs
+ * - GAS requires real top-level bindings
  *
- * Webpack collapses alias information before this plugin runs,
- * making it impossible to safely bind such exports without parsing
- * TypeScript source directly.
- *
- * Therefore:
- *   ❌ This construct is NOT supported
- *   ✅ We FAIL FAST with a clear error
+ * Therefore we FAIL FAST when this syntax is detected.
  */
 export function getEmitterFunc(
     compilation: Compilation,
@@ -51,8 +49,11 @@ export function getEmitterFunc(
         const entry = resolveTsEntrypoint(compilation);
         Logger.info(`Resolved TypeScript entrypoint '${entry.entryName}'`);
 
+        // 🚨 HARD FAIL: detect unsupported re-export syntax
+        assertNoAliasedReexportsInEntry(entry.entryModule);
+
         assertNoWildcardReexports(compilation, entry);
-        Logger.info("Validated export surface (no wildcard re-exports)");
+        Logger.info("Validated export surface");
 
         const exportBindings = getExportBindings(
             compilation,
@@ -60,8 +61,6 @@ export function getEmitterFunc(
             entry.runtime,
             opts
         );
-
-        Logger.info(`Discovered ${exportBindings.length} exported symbol(s)`);
 
         if (exportBindings.length === 0) {
             throw new Error("No exported symbols found in TypeScript entrypoint");
@@ -80,36 +79,59 @@ export function getEmitterFunc(
         );
 
         const sanitizedSource = sanitizeWebpackHelpers(rawSource);
-        Logger.info("Sanitized transpiled module source");
 
         const output = getGasSafeOutput(
             namespace,
             sanitizedSource,
             exportBindings
         );
-        Logger.info("Assembled GAS-safe output");
 
         cleanupUnwantedOutputFiles(compilation);
-        Logger.info("Removed transient Webpack JavaScript artifacts");
-
-        const outputName = `${entry.entryName}.gs`;
-
-        warnIfWebpackRuntimeLeaked(
-            output,
-            `${opts.namespaceRoot}.${opts.subsystem}`
-        );
 
         compilation.emitAsset(
-            outputName,
+            `${entry.entryName}.gs`,
             new sources.RawSource(output)
         );
-
-        Logger.info(`Emitted GAS artifact '${outputName}'`);
     };
 }
 
 // ======================================================
-// Export surface resolution (FAIL-FAST for alias re-exports)
+// 🚨 NEW: Regex-based guard (authoritative)
+// ======================================================
+
+function assertNoAliasedReexportsInEntry(entryModule: Module) {
+    const resource = (entryModule as any)?.resource;
+    if (typeof resource !== "string") return;
+
+    const source = fs.readFileSync(resource, "utf8");
+
+    // Matches: export { foo as bar } from "./x";
+    const ALIASED_REEXPORT_RE =
+        /export\s*\{[^}]*\bas\b[^}]*\}\s*from\s*['"][^'"]+['"]/g;
+
+    if (ALIASED_REEXPORT_RE.test(source)) {
+        throw new Error(
+            [
+                `Unsupported aliased re-export detected in entry module.`,
+                ``,
+                `This plugin does not support:`,
+                `  export { foo as bar } from "...";`,
+                ``,
+                `Reason:`,
+                `  - Re-exports do not create runtime identifiers`,
+                `  - Webpack removes alias information`,
+                `  - GAS requires real top-level functions`,
+                ``,
+                `Fix:`,
+                `  import { foo } from "...";`,
+                `  export function bar() { return foo(); }`
+            ].join("\n")
+        );
+    }
+}
+
+// ======================================================
+// Export surface resolution (safe cases only)
 // ======================================================
 
 function getExportBindings(
@@ -125,64 +147,13 @@ function getExportBindings(
     for (const exportInfo of exportsInfo.orderedExports) {
         if (exportInfo.name === "__esModule") continue;
 
-        // -------------------------
-        // DEFAULT EXPORT
-        // -------------------------
         if (exportInfo.name === "default") {
-            const gasName =
-                opts.defaultExportName ?? "defaultExport";
-
             bindings.push({
-                exportName: gasName,
+                exportName: opts.defaultExportName ?? "defaultExport",
                 localName: "defaultExport",
                 webpackExportName: "default"
             });
             continue;
-        }
-
-        const target = (exportInfo as any).getTarget?.(
-            compilation.moduleGraph,
-            runtime
-        );
-
-        const isReexport =
-            target?.module && target.module !== entryModule;
-
-        let definingHasLocalBinding = false;
-
-        if (isReexport && target?.module) {
-            const definingExports =
-                compilation.moduleGraph.getExportsInfo(target.module);
-
-            for (const e of definingExports.orderedExports) {
-                if (e.name === exportInfo.name) {
-                    definingHasLocalBinding = true;
-                    break;
-                }
-            }
-        }
-
-        // 🚨 UNSUPPORTED CONSTRUCT — THROW
-        if (isReexport && !definingHasLocalBinding) {
-            throw new Error(
-                [
-                    `Unsupported aliased re-export detected for '${exportInfo.name}'.`,
-                    ``,
-                    `This export is re-exported from another module but does NOT`,
-                    `correspond to a real runtime identifier.`,
-                    ``,
-                    `Problematic pattern:`,
-                    `  export { onOpen as ${exportInfo.name} } from "./triggers";`,
-                    ``,
-                    `Why this fails:`,
-                    `  - Re-exports do not create runtime bindings`,
-                    `  - GAS requires real top-level functions`,
-                    ``,
-                    `Fix (recommended):`,
-                    `  import { onOpen } from "./triggers";`,
-                    `  export function ${exportInfo.name}() { return onOpen(); }`
-                ].join("\n")
-            );
         }
 
         bindings.push({
@@ -190,18 +161,13 @@ function getExportBindings(
             localName: exportInfo.name,
             webpackExportName: exportInfo.name
         });
-
-        Logger.debug(
-            `ExportBinding resolved: ` +
-            `exportName=${exportInfo.name} runtimeIdentifier=${exportInfo.name}`
-        );
     }
 
     return bindings;
 }
 
 // ======================================================
-// Output helpers
+// Helpers (unchanged)
 // ======================================================
 
 function getGasSafeOutput(
@@ -209,21 +175,17 @@ function getGasSafeOutput(
     moduleSource: string,
     exports: ExportBinding[]
 ) {
-    const exportAssignments = exports
+    return dedent`
+        ${renderNamespaceInit(namespace)}
+
+        ${moduleSource}
+
+        ${exports
         .map(
             e =>
                 `globalThis.${namespace}.${e.exportName} = ${e.localName};`
         )
-        .join("\n");
-
-    return dedent`
-        ${renderNamespaceInit(namespace)}
-
-        // Module code (transpiled)
-        ${moduleSource}
-
-        // Export surface
-        ${exportAssignments}
+        .join("\n")}
     `;
 }
 
@@ -233,18 +195,12 @@ function getModuleSource(
     runtime: any
 ): string {
     const results = (compilation as any).codeGenerationResults;
-    if (!results) return "";
-
-    const codeGen = results.get(module, runtime);
-    if (!codeGen) return "";
-
-    const sourcesMap = (codeGen as any).sources;
+    const codeGen = results?.get(module, runtime);
     const source =
-        sourcesMap?.get("javascript") ?? sourcesMap?.get("js");
+        codeGen?.sources?.get("javascript") ??
+        codeGen?.sources?.get("js");
 
-    return source?.source?.()
-        ? String(source.source())
-        : "";
+    return source?.source?.() ? String(source.source()) : "";
 }
 
 function getCombinedModuleSource(
@@ -252,16 +208,10 @@ function getCombinedModuleSource(
     modules: Module[],
     runtime: any
 ): string {
-    const parts: string[] = [];
-
-    for (const m of modules) {
-        const src = getModuleSource(compilation, m, runtime);
-        if (src && src.trim()) {
-            parts.push(src);
-        }
-    }
-
-    return parts.join("\n");
+    return modules
+        .map(m => getModuleSource(compilation, m, runtime))
+        .filter(Boolean)
+        .join("\n");
 }
 
 function collectModulesToEmit(
@@ -279,84 +229,22 @@ function collectModulesToEmit(
         }
     }
 
-    for (const e of exports) {
-        const defining = resolveExportDefiningModule(
-            compilation,
-            entry.entryModule,
-            e.webpackExportName
-        );
-        set.add(defining);
-    }
-
     return Array.from(set);
 }
 
-function resolveExportDefiningModule(
-    compilation: Compilation,
-    entryModule: Module,
-    exportName: string
-): Module {
-    const exportsInfo =
-        compilation.moduleGraph.getExportsInfo(entryModule);
-
-    const exportInfo: any =
-        (exportsInfo as any).getExportInfo(exportName);
-
-    const target = exportInfo?.getTarget?.(
-        compilation.moduleGraph
-    );
-
-    if (target?.module) {
-        return target.module as Module;
-    }
-
-    return entryModule;
-}
-
 function sanitizeWebpackHelpers(source: string): string {
-    if (!source.trim()) return source;
-
-    const lines = source.split(/\r?\n/);
-    const out: string[] = [];
-
-    for (const line of lines) {
-        const violated =
-            FORBIDDEN_WEBPACK_RUNTIME_PATTERNS.some(re =>
-                re.test(line)
-            );
-
-        if (violated) {
-            out.push(
-                `// [dropped-by-gas-demodulify]: ${line.trim()}`
-            );
-        } else {
-            out.push(line);
-        }
-    }
-
-    return out.join("\n");
-}
-
-function warnIfWebpackRuntimeLeaked(
-    output: string,
-    context: string
-) {
-    const uncommented = strip(output);
-
-    for (const re of FORBIDDEN_WEBPACK_RUNTIME_PATTERNS) {
-        if (re.test(uncommented)) {
-            Logger.error(
-                `Internal invariant violated: forbidden Webpack artifact ` +
-                `'${re}' detected in emitted GAS output (${context}).`
-            );
-            return;
-        }
-    }
+    return source
+        .split(/\r?\n/)
+        .map(line =>
+            FORBIDDEN_WEBPACK_RUNTIME_PATTERNS.some(re => re.test(line))
+                ? `// [dropped-by-gas-demodulify]: ${line.trim()}`
+                : line
+        )
+        .join("\n");
 }
 
 function renderNamespaceInit(namespace: string): string {
     return dedent`
-        // Namespace initialization
         (function init(ns) {
           let o = globalThis;
           for (const p of ns.split(".")) {
@@ -371,12 +259,8 @@ function cleanupUnwantedOutputFiles(
     compilation: Compilation
 ) {
     for (const assetName of Object.keys(compilation.assets)) {
-        if (assetName.endsWith(".js")) {
-            compilation.deleteAsset(assetName);
-            continue;
-        }
-
-        if (assetName === OUTPUT_BUNDLE_FILENAME_TO_DELETE) {
+        if (assetName.endsWith(".js") ||
+            assetName === OUTPUT_BUNDLE_FILENAME_TO_DELETE) {
             compilation.deleteAsset(assetName);
         }
     }

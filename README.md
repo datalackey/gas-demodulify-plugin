@@ -443,6 +443,27 @@ cause hard-to-diagnose bugs that change runtime behavior).
    - See [here](docs/plugin-design.md#how-gas-demodulify-separates-wheat-application-code-from-chaff-webpack-boilerplate) 
      for more details.
 
+- No aliased re-exports in the entry module
+    - Patterns rejected: `export { foo as bar } from './module'`
+    - Rationale:
+        - Re-exporting with an alias does **not** create a runtime identifier named `bar`
+        - Webpack erases alias intent during module graph construction
+        - gas-demodulify operates after this erasure and cannot safely recover the original binding
+    - Fix: Replace aliased re-exports with an explicit wrapper export in the entry module:
+        - Bad:
+          ```ts
+          export { onOpen as handleOpen } from "./triggers";
+          ```
+        - Good:
+          ```ts
+          import { onOpen } from "./triggers";
+          export function handleOpen() {
+            return onOpen();
+          }
+          ```
+
+
+
 ## Configuration
 
 
