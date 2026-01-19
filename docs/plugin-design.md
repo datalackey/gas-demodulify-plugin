@@ -1,18 +1,21 @@
 # Plugin Design
 
-- [Introduction](#introduction)
-- [Simple Example](#simple-example)
-    - [Why Does It Fail When Deployed to GAS ?](#why-does-it-fail-when-deployed-to-gas-)
+<!-- TOC:START -->
+- [Plugin Design](#plugin-design)
+  - [Introduction](#introduction)
+  - [Simple Example](#simple-example)
+    - [Why Does It Fail When Deployed to GAS ?](#why-does-it-fail-when-deployed-to-gas)
     - [If Webpack Output Fails in GAS, Why Use It at All?](#if-webpack-output-fails-in-gas-why-use-it-at-all)
-- [How gas-demodulify Separates Wheat (Application Code) from Chaff (Webpack Boilerplate)](#how-gas-demodulify-separates-wheat-application-code-from-chaff-webpack-boilerplate)
+  - [How gas-demodulify Separates Wheat (Application Code) from Chaff (Webpack Boilerplate)](#how-gas-demodulify-separates-wheat-application-code-from-chaff-webpack-boilerplate)
     - [Key Design Responsibilities of the Code Emitter](#key-design-responsibilities-of-the-code-emitter)
-        - [1. Select reachable modules only](#1-select-reachable-modules-only)
-        - [2. Strip all Webpack runtime constructs](#2-strip-all-webpack-runtime-constructs)
-        - [3. Rewrite module contents as top-level code](#3-rewrite-module-contents-as-top-level-code)
-        - [4. Bind imports via explicit symbol resolution](#4-bind-imports-via-explicit-symbol-resolution)
-        - [5. Attach exports to explicit namespaces](#5-attach-exports-to-explicit-namespaces)
-- [Why Exactly One Webpack Entry Is Required](#why-exactly-one-webpack-entry-is-required)
-- [Addenda: Understanding webpack_require](#addenda-understanding-webpack_require)
+      - [1. Select reachable modules only](#1-select-reachable-modules-only)
+      - [2. Strip all Webpack runtime constructs](#2-strip-all-webpack-runtime-constructs)
+      - [3. Rewrite module contents as top-level code](#3-rewrite-module-contents-as-top-level-code)
+      - [4. Bind imports via explicit symbol resolution](#4-bind-imports-via-explicit-symbol-resolution)
+      - [5. Attach exports to explicit namespaces](#5-attach-exports-to-explicit-namespaces)
+  - [Why Exactly One Webpack Entry Is Required](#why-exactly-one-webpack-entry-is-required)
+  - [Addenda: Understanding webpack_require](#addenda-understanding-webpack_require)
+<!-- TOC:END -->
 
 
 ## Introduction
