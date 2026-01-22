@@ -34,7 +34,7 @@
       - [*subsystem*](#subsystem)
       - [*buildMode*](#buildmode)
       - [*defaultExportName*](#defaultexportname)
-          - [Example](#example)
+          - [Example](#example-1)
     - [Log level](#log-level)
   - [Design & Internals](#design--internals)
 <!-- TOC:END -->

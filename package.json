@@ -13,10 +13,10 @@
         "pretest": "npm run compile",
         "test": "jest",
         "test:watch": "jest --watch",
-        "build": "rm -rf dist && npm run compile && npm run test",
         "docs:toc:update": "update-markdown-toc --recursive .",
         "docs:toc:check": "update-markdown-toc --check --recursive .",
-        "package:release": "npm run docs:toc:check &&  npm run build && node scripts/build-plugin-package.js"
+        "build": "rm -rf dist && npm run format && npm run docs:toc:update && npm run compile && npm run test",
+        "package:release": "node scripts/release.js"
     },
     "peerDependencies": {
         "webpack": "^5.0.0"

@@ -9,6 +9,7 @@
 - [install deps (only needed once or when package.json changed)](#install-deps-only-needed-once-or-when-packagejson-changed)
 - [Packate plugin into dist/](#packate-plugin-into-dist)
     - [Test Troubleshooting Tips](#test-troubleshooting-tips)
+  - [Formatting](#formatting)
 <!-- TOC:END -->
 
 
@@ -73,3 +74,11 @@ npm run package:release
   you rebuilt the properly packaged plugin via the `package:release` build target.
 
 
+
+## Formatting
+
+Code is formatted as part of the release process, so you should not depend on any manual formatting you do in your IDE.
+
+`npm run build` will reformat your code.
+
+`npm run package:release` will fail if formatting is not compliant.
