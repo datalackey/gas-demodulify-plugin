@@ -82,3 +82,9 @@ Code is formatted as part of the release process, so you should not depend on an
 `npm run build` will reformat your code.
 
 `npm run package:release` will fail if formatting is not compliant.
+
+
+## Contributing a PR 
+
+CI runs `npm run package:release` on all supported Node LTS versions.
+PRs must pass on all matrix entries before merge.
