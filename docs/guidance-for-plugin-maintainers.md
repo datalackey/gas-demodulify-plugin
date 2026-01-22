@@ -10,6 +10,7 @@
 - [Packate plugin into dist/](#packate-plugin-into-dist)
     - [Test Troubleshooting Tips](#test-troubleshooting-tips)
   - [Formatting](#formatting)
+  - [Contributing a PR](#contributing-a-pr)
 <!-- TOC:END -->
 
 

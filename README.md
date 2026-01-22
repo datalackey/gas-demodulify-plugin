@@ -33,7 +33,7 @@
       - [*subsystem*](#subsystem)
       - [*buildMode*](#buildmode)
       - [*defaultExportName*](#defaultexportname)
-          - [Example](#example-1)
+          - [Example](#example)
     - [Log level](#log-level)
   - [Of Interest to Contributors](#of-interest-to-contributors)
 <!-- TOC:END -->

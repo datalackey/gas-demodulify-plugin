@@ -4,7 +4,7 @@
 - [Plugin Design](#plugin-design)
   - [Introduction](#introduction)
   - [Simple Example](#simple-example)
-    - [Why Does It Fail When Deployed to GAS ?](#why-does-it-fail-when-deployed-to-gas-)
+    - [Why Does It Fail When Deployed to GAS ?](#why-does-it-fail-when-deployed-to-gas)
     - [If Webpack Output Fails in GAS, Why Use It at All?](#if-webpack-output-fails-in-gas-why-use-it-at-all)
   - [How gas-demodulify Separates Wheat (Application Code) from Chaff (Webpack Boilerplate)](#how-gas-demodulify-separates-wheat-application-code-from-chaff-webpack-boilerplate)
     - [Key Design Responsibilities of the Code Emitter](#key-design-responsibilities-of-the-code-emitter)
