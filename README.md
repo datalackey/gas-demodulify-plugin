@@ -36,7 +36,7 @@
       - [*defaultExportName*](#defaultexportname)
           - [Example](#example-1)
     - [Log level](#log-level)
-  - [Design & Internals](#design--internals)
+  - [Of Interest to Contributors](#of-interest-to-contributors)
 <!-- TOC:END -->
 
 
@@ -593,7 +593,7 @@ The environment variable takes precedence.
 
 - Default: info
 
-## Design & Internals
+## Of Interest to Contributors 
 
 If you’re interested in the internal architecture of this plugin or in contributing to its development, see:
 
