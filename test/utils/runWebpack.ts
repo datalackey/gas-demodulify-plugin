@@ -1,9 +1,7 @@
 import webpack from "webpack";
 import fs from "fs";
 import path from "path";
-import {
-    FORBIDDEN_WEBPACK_RUNTIME_PATTERNS
-} from "../../src/plugin/invariants";
+import { FORBIDDEN_WEBPACK_RUNTIME_PATTERNS } from "../../src/plugin/invariants";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const strip = require("strip-comments");
@@ -14,8 +12,7 @@ const strip = require("strip-comments");
  * Any successful build must NOT emit Webpack runtime artifacts
  * into GAS output (.gs files).
  */
-const INVARIANT_MSG =
-    "Invariant violation: GAS output must not contain Webpack runtime artifacts";
+const INVARIANT_MSG = "Invariant violation: GAS output must not contain Webpack runtime artifacts";
 
 /**
  * Runs Webpack for a fixture config and enforces GAS output invariants.
@@ -36,27 +33,19 @@ export function runWebpack(configPath: string): Promise<void> {
             }
 
             // 2. ANY compilation errors (plugin throws land here)
-            const compilationErrors =
-                stats?.compilation?.errors ?? [];
+            const compilationErrors = stats?.compilation?.errors ?? [];
 
             if (compilationErrors.length > 0) {
                 const message = compilationErrors
                     .map(e =>
-                        e instanceof Error
-                            ? e.message
-                            : typeof e === "string"
-                                ? e
-                                : String(e)
+                        e instanceof Error ? e.message : typeof e === "string" ? e : String(e)
                     )
                     .join("\n\n");
 
                 return reject(new Error(message));
             }
 
-            const outputDir = path.join(
-                path.dirname(configPath),
-                "dist"
-            );
+            const outputDir = path.join(path.dirname(configPath), "dist");
 
             if (!fs.existsSync(outputDir)) {
                 return resolve();
@@ -74,9 +63,7 @@ export function runWebpack(configPath: string): Promise<void> {
 
                 for (const pattern of FORBIDDEN_WEBPACK_RUNTIME_PATTERNS) {
                     if (pattern.test(uncommented)) {
-                        offenders.push(
-                            `${fullPath} (matched: ${pattern})`
-                        );
+                        offenders.push(`${fullPath} (matched: ${pattern})`);
                         break;
                     }
                 }
@@ -84,10 +71,7 @@ export function runWebpack(configPath: string): Promise<void> {
 
             if (offenders.length > 0) {
                 return reject(
-                    new Error(
-                        `${INVARIANT_MSG}\n` +
-                        offenders.map(f => `  - ${f}`).join("\n")
-                    )
+                    new Error(`${INVARIANT_MSG}\n` + offenders.map(f => `  - ${f}`).join("\n"))
                 );
             }
 

@@ -7,9 +7,7 @@ import type { ResolvedEntrypoint } from "./types";
 /**
  * Resolves the single TypeScript-authored entrypoint.
  */
-export function resolveTsEntrypoint(
-    compilation: Compilation,
-): ResolvedEntrypoint {
+export function resolveTsEntrypoint(compilation: Compilation): ResolvedEntrypoint {
     Logger.debug("Resolving TypeScript entrypoint");
 
     const candidates: ResolvedEntrypoint[] = [];
@@ -19,9 +17,7 @@ export function resolveTsEntrypoint(
 
         const chunks: any[] = Array.from(
             (entrypoint as any).chunks ??
-            (entrypoint.getEntrypointChunk
-                ? [entrypoint.getEntrypointChunk()]
-                : [])
+                (entrypoint.getEntrypointChunk ? [entrypoint.getEntrypointChunk()] : [])
         );
 
         Logger.debug(`Entrypoint '${entryName}' has ${chunks.length} chunk(s)`);
@@ -38,7 +34,7 @@ export function resolveTsEntrypoint(
                         entryName,
                         entryModule: m,
                         runtime,
-                        chunks
+                        chunks,
                     });
                     break;
                 }
@@ -58,7 +54,9 @@ export function resolveTsEntrypoint(
     }
 
     const resolved = candidates[0];
-    Logger.debug(`Resolved entrypoint '${resolved.entryName}' with ${resolved.chunks.length} chunk(s)`);
+    Logger.debug(
+        `Resolved entrypoint '${resolved.entryName}' with ${resolved.chunks.length} chunk(s)`
+    );
 
     return resolved;
 }
@@ -66,21 +64,21 @@ export function resolveTsEntrypoint(
 // Wildcard re-export guard
 const exportStarRe = /export\s*\*\s*(?:as\s+\w+\s*)?(?:from\s+['"]|;)/;
 
-export function assertNoWildcardReexports(
-    compilation: Compilation,
-    entry: ResolvedEntrypoint
-) {
+export function assertNoWildcardReexports(compilation: Compilation, entry: ResolvedEntrypoint) {
     for (const chunk of entry.chunks) {
         for (const module of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
             const resource = (module as any)?.resource;
 
-            if (typeof resource === "string" && (resource.endsWith(".ts") || resource.endsWith(".tsx"))) {
+            if (
+                typeof resource === "string" &&
+                (resource.endsWith(".ts") || resource.endsWith(".tsx"))
+            ) {
                 const abs = path.isAbsolute(resource)
                     ? resource
                     : path.resolve(
-                        (compilation as any).options?.context ?? process.cwd(),
-                        resource
-                    );
+                          (compilation as any).options?.context ?? process.cwd(),
+                          resource
+                      );
                 if (fs.existsSync(abs)) {
                     const content = fs.readFileSync(abs, "utf8");
                     if (exportStarRe.test(content)) {
@@ -89,14 +87,11 @@ export function assertNoWildcardReexports(
                 }
             }
 
-            const exportsInfo =
-                compilation.moduleGraph.getExportsInfo(module);
+            const exportsInfo = compilation.moduleGraph.getExportsInfo(module);
             const other = exportsInfo.otherExportsInfo;
 
             if (other && other.provided === true) {
-                throw unsupportedWildcardError(
-                    `Module: ${resource ?? "<synthetic>"}`
-                );
+                throw unsupportedWildcardError(`Module: ${resource ?? "<synthetic>"}`);
             }
         }
     }
@@ -114,7 +109,7 @@ function unsupportedWildcardError(details?: string): Error {
             "Replace wildcard re-exports with explicit named re-exports:",
             '  export { foo, bar } from "./module";',
             "",
-            details ?? ""
+            details ?? "",
         ].join("\n")
     );
 }

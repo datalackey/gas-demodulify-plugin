@@ -1,8 +1,6 @@
 export type LogLevel = "silent" | "info" | "debug";
 
-
 let currentLevel: LogLevel = "info";
-
 
 export const Logger = {
     /**
@@ -22,7 +20,7 @@ export const Logger = {
         const overrideLevel = process.env.LOGLEVEL;
         if (overrideLevel) {
             currentLevel = validateLogLevel(overrideLevel);
-            if (currentLevel !== "silent")  {
+            if (currentLevel !== "silent") {
                 console.info(
                     `[gas-demodulify][warn] Log level overridden via environment variable LOGLEVEL=${process.env.LOGLEVEL}`
                 );
@@ -63,9 +61,8 @@ export const Logger = {
     // Query helpers
     isDebug(): boolean {
         return currentLevel === "debug";
-    }
+    },
 };
-
 
 function validateLogLevel(value: string): LogLevel {
     const v = value.toLowerCase();

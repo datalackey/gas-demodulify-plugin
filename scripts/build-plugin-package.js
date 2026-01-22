@@ -9,14 +9,11 @@ const pkg = {
     name: "gas-demodulify-plugin",
     version: rootPkg.version,
     main: "GASDemodulifyPlugin.js",
-    license: "MIT"
+    license: "MIT",
 };
 
 // Ensure dist/plugin exists
 fs.mkdirSync(outDir, { recursive: true });
 
 // Write package.json
-fs.writeFileSync(
-    path.join(outDir, "package.json"),
-    JSON.stringify(pkg, null, 2)
-);
+fs.writeFileSync(path.join(outDir, "package.json"), JSON.stringify(pkg, null, 2));

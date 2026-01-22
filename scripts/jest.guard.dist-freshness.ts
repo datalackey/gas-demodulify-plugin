@@ -27,8 +27,8 @@ beforeAll(() => {
     if (newestDistMtime < newestSrcMtime) {
         throw new Error(
             "Stale dist detected.\n" +
-            "Source files are newer than compiled output.\n\n" +
-            "Run `npm run compile` (or ensure compile runs before tests)."
+                "Source files are newer than compiled output.\n\n" +
+                "Run `npm run compile` (or ensure compile runs before tests)."
         );
     }
 });

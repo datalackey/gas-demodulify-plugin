@@ -3,36 +3,22 @@ import fs from "fs";
 import { runWebpack } from "../utils/runWebpack";
 import { readStrippedFile } from "../utils/readStrippedFile";
 
+test("minimal-gas", async () => {
+    const fixtureDir = path.join(__dirname, "fixtures", "minimal-gas");
 
-test("minimal-gas",
+    const distDir = path.join(fixtureDir, "dist");
 
-    async () => {
-        const fixtureDir = path.join(
-            __dirname,
-            "fixtures",
-            "minimal-gas"
-        );
+    // clean dist
+    fs.rmSync(distDir, { recursive: true, force: true });
+    fs.mkdirSync(distDir, { recursive: true });
 
-        const distDir = path.join(fixtureDir, "dist");
+    // run webpack
+    await runWebpack(path.join(fixtureDir, "webpack.config.js"));
 
+    const actual = readStrippedFile(path.join(distDir, "backend.gs"));
 
-        // clean dist
-        fs.rmSync(distDir, { recursive: true, force: true });
-        fs.mkdirSync(distDir, { recursive: true });
-
-        // run webpack
-        await runWebpack(path.join(fixtureDir, "webpack.config.js"));
-
-
-        const actual = readStrippedFile(
-            path.join(distDir, "backend.gs")
-        );
-
-        expect(actual).toContain('globalThis.MYADDON.GAS.hello = hello;');
-        expect(actual).toContain('globalThis.MYADDON.GAS.goodbye = goodbye;');
-        expect(actual).toContain('function hello');
-        expect(actual).toContain('function goodbye');
-    },
-
-    30_000
-);
+    expect(actual).toContain("globalThis.MYADDON.GAS.hello = hello;");
+    expect(actual).toContain("globalThis.MYADDON.GAS.goodbye = goodbye;");
+    expect(actual).toContain("function hello");
+    expect(actual).toContain("function goodbye");
+}, 30_000);

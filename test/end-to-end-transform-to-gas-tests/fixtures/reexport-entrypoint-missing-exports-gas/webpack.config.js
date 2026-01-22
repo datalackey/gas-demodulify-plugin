@@ -6,16 +6,16 @@ module.exports = {
     context: __dirname,
 
     entry: {
-        gas: "./src/gas/index.ts"
+        gas: "./src/gas/index.ts",
     },
 
     output: {
         path: path.join(__dirname, "dist"),
-        filename: "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME"
+        filename: "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME",
     },
 
     resolve: {
-        extensions: [".ts", ".js"]
+        extensions: [".ts", ".js"],
     },
 
     module: {
@@ -25,11 +25,11 @@ module.exports = {
                 use: {
                     loader: "ts-loader",
                     options: {
-                        configFile: "tsconfig.json"
-                    }
-                }
-            }
-        ]
+                        configFile: "tsconfig.json",
+                    },
+                },
+            },
+        ],
     },
 
     plugins: [
@@ -37,7 +37,7 @@ module.exports = {
             namespaceRoot: "MYADDON",
             subsystem: "GAS",
             buildMode: "gas",
-            logLevel: "silent"
-        })
-    ]
+            logLevel: "silent",
+        }),
+    ],
 };

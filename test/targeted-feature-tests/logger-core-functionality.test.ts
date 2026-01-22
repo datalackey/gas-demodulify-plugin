@@ -26,9 +26,7 @@ describe("Logger basic behavior (no env override)", () => {
 
         Logger.info("hello");
 
-        expect(logSpy).toHaveBeenCalledWith(
-            "[gas-demodulify] hello"
-        );
+        expect(logSpy).toHaveBeenCalledWith("[gas-demodulify] hello");
     });
 
     test("debug logs only when level is debug", () => {
@@ -40,9 +38,7 @@ describe("Logger basic behavior (no env override)", () => {
         Logger.setLevel("debug");
         Logger.debug("yep");
 
-        expect(logSpy).toHaveBeenCalledWith(
-            "[gas-demodulify][debug] yep"
-        );
+        expect(logSpy).toHaveBeenCalledWith("[gas-demodulify][debug] yep");
     });
 
     test("silent suppresses info and debug logs", () => {
@@ -60,9 +56,7 @@ describe("Logger basic behavior (no env override)", () => {
 
         Logger.warn("something odd");
 
-        expect(warnSpy).toHaveBeenCalledWith(
-            "[gas-demodulify][warn] something odd"
-        );
+        expect(warnSpy).toHaveBeenCalledWith("[gas-demodulify][warn] something odd");
     });
 
     test("error always logs regardless of level", () => {
@@ -70,8 +64,6 @@ describe("Logger basic behavior (no env override)", () => {
 
         Logger.error("boom");
 
-        expect(errorSpy).toHaveBeenCalledWith(
-            "[gas-demodulify][error] boom"
-        );
+        expect(errorSpy).toHaveBeenCalledWith("[gas-demodulify][error] boom");
     });
 });

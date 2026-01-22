@@ -6,7 +6,6 @@ import { Logger } from "./Logger";
 import type { GASDemodulifyOptions } from "./plugin-configuration-options/options.schema";
 import { validateAndNormalizePluginOptions } from "./plugin-configuration-options/validateAndNormalizePluginOptions";
 
-
 /**
  * Webpack plugin entrypoint for gas-demodulify.
  *
@@ -35,9 +34,9 @@ class GASDemodulifyPlugin {
 
         Logger.info(
             `Initialized GASDemodulifyPlugin ` +
-            `(namespaceRoot=${this.options.namespaceRoot}, ` +
-            `subsystem=${this.options.subsystem}, ` +
-            `buildMode=${this.options.buildMode})`
+                `(namespaceRoot=${this.options.namespaceRoot}, ` +
+                `subsystem=${this.options.subsystem}, ` +
+                `buildMode=${this.options.buildMode})`
         );
     }
 
@@ -61,45 +60,39 @@ class GASDemodulifyPlugin {
          *    (watch mode, dev server, rebuilds).
          *  - All asset mutation must be scoped to the current Compilation.
          */
-        compiler.hooks.thisCompilation.tap(
-            "GASDemodulifyPlugin",
-            compilation => {
-                Logger.info("Starting GAS demodulification for new compilation");
+        compiler.hooks.thisCompilation.tap("GASDemodulifyPlugin", compilation => {
+            Logger.info("Starting GAS demodulification for new compilation");
+
+            /**
+             * The `processAssets` hook allows mutation of emitted assets
+             * after Webpack has completed code generation but before files
+             * are written to disk.
+             *
+             * This is the ideal phase to:
+             *  - extract transpiled module sources
+             *  - delete Webpack-emitted `.js` artifacts
+             *  - emit GAS-safe `.gs` / `.html` outputs
+             */
+            Logger.info("Registering GAS demodulification asset processor");
+
+            compilation.hooks.processAssets.tap(
+                {
+                    name: "GASDemodulifyPlugin",
+                    stage: compiler.webpack.Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE,
+                },
 
                 /**
-                 * The `processAssets` hook allows mutation of emitted assets
-                 * after Webpack has completed code generation but before files
-                 * are written to disk.
+                 * Delegate all asset processing to CodeEmitter.
                  *
-                 * This is the ideal phase to:
-                 *  - extract transpiled module sources
-                 *  - delete Webpack-emitted `.js` artifacts
-                 *  - emit GAS-safe `.gs` / `.html` outputs
                  */
-                Logger.info("Registering GAS demodulification asset processor");
-
-                compilation.hooks.processAssets.tap(
-                    {
-                        name: "GASDemodulifyPlugin",
-                        stage:
-                        compiler.webpack.Compilation
-                            .PROCESS_ASSETS_STAGE_OPTIMIZE
-                    },
-
-                    /**
-                     * Delegate all asset processing to CodeEmitter.
-                     *
-                     */
-                    getEmitterFunc(compilation, {
-                        namespaceRoot: this.options.namespaceRoot,
-                        subsystem: this.options.subsystem
-                    })
-                );
-            }
-        );
+                getEmitterFunc(compilation, {
+                    namespaceRoot: this.options.namespaceRoot,
+                    subsystem: this.options.subsystem,
+                })
+            );
+        });
     }
 }
-
 
 function assertOutputFileIgnored(compiler: Compiler) {
     const output = compiler.options.output;
@@ -115,7 +108,7 @@ function assertOutputFileIgnored(compiler: Compiler) {
                 "",
                 '  output: { filename: "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME" }',
                 "",
-                "Any other value — including omission of `output.filename` — is not allowed."
+                "Any other value — including omission of `output.filename` — is not allowed.",
             ].join("\n")
         );
     }
@@ -157,7 +150,6 @@ function assertSingleEntry(compiler: Compiler) {
     throw new Error("Unsupported Webpack entry configuration");
 }
 
-
-module.exports = GASDemodulifyPlugin;   // TODO - better to have only one export method
+module.exports = GASDemodulifyPlugin; // TODO - better to have only one export method
 // Provide an ES default export so tests that import from the TS source succeed
 export default GASDemodulifyPlugin;

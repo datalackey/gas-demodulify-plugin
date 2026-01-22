@@ -1,7 +1,5 @@
 import GASDemodulifyPlugin from "../../src/plugin/GASDemodulifyPlugin";
-import {
-    OUTPUT_BUNDLE_FILENAME_TO_DELETE
-} from "../../src/plugin/code-emission/CodeEmitter";
+import { OUTPUT_BUNDLE_FILENAME_TO_DELETE } from "../../src/plugin/code-emission/CodeEmitter";
 import type { Compiler } from "webpack";
 
 /**
@@ -13,9 +11,7 @@ import type { Compiler } from "webpack";
  *
  * We are testing *configuration invariants*, not Webpack behavior.
  */
-function makeCompiler(
-    filename?: string
-): Compiler {
+function makeCompiler(filename?: string): Compiler {
     return {
         options: {
             output: filename === undefined ? {} : { filename },
@@ -26,14 +22,13 @@ function makeCompiler(
             thisCompilation: {
                 tap(_name: string, _fn: () => void) {
                     /* deliberately empty */
-                }
-            }
-        }
+                },
+            },
+        },
     } as unknown as Compiler;
 }
 
 describe("output.filename sentinel enforcement", () => {
-
     test("throws when output.filename is omitted", () => {
         const compiler = makeCompiler(undefined);
         const plugin = new GASDemodulifyPlugin();
@@ -53,14 +48,11 @@ describe("output.filename sentinel enforcement", () => {
     });
 
     test("does not throw when output.filename is the sentinel", () => {
-        const compiler = makeCompiler(
-            OUTPUT_BUNDLE_FILENAME_TO_DELETE
-        );
+        const compiler = makeCompiler(OUTPUT_BUNDLE_FILENAME_TO_DELETE);
         const plugin = new GASDemodulifyPlugin();
 
         expect(() => {
             plugin.apply(compiler);
         }).not.toThrow();
     });
-
 });

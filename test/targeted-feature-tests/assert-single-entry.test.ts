@@ -27,45 +27,35 @@ describe("assertSingleEntry enforcement", () => {
         const compiler = makeCompiler(undefined);
         const plugin = new GASDemodulifyPlugin();
 
-        expect(() => plugin.apply(compiler)).toThrow(
-            /requires a Webpack entry object/i
-        );
+        expect(() => plugin.apply(compiler)).toThrow(/requires a Webpack entry object/i);
     });
 
     test("throws when entry is a function", () => {
         const compiler = makeCompiler(() => ({}));
         const plugin = new GASDemodulifyPlugin();
 
-        expect(() => plugin.apply(compiler)).toThrow(
-            /function entries are not supported/i
-        );
+        expect(() => plugin.apply(compiler)).toThrow(/function entries are not supported/i);
     });
 
     test("throws when entry is a string", () => {
         const compiler = makeCompiler("./src/index.ts");
         const plugin = new GASDemodulifyPlugin();
 
-        expect(() => plugin.apply(compiler)).toThrow(
-            /object-based Webpack entry/i
-        );
+        expect(() => plugin.apply(compiler)).toThrow(/object-based Webpack entry/i);
     });
 
     test("throws when entry is an array", () => {
         const compiler = makeCompiler(["./a.ts"]);
         const plugin = new GASDemodulifyPlugin();
 
-        expect(() => plugin.apply(compiler)).toThrow(
-            /array entries are not supported/i
-        );
+        expect(() => plugin.apply(compiler)).toThrow(/array entries are not supported/i);
     });
 
     test("throws when entry object has zero keys", () => {
         const compiler = makeCompiler({});
         const plugin = new GASDemodulifyPlugin();
 
-        expect(() => plugin.apply(compiler)).toThrow(
-            /found 0/i
-        );
+        expect(() => plugin.apply(compiler)).toThrow(/found 0/i);
     });
 
     test("throws when entry object has multiple keys", () => {
@@ -75,9 +65,7 @@ describe("assertSingleEntry enforcement", () => {
         });
         const plugin = new GASDemodulifyPlugin();
 
-        expect(() => plugin.apply(compiler)).toThrow(
-            /found 2/i
-        );
+        expect(() => plugin.apply(compiler)).toThrow(/found 2/i);
     });
 
     test("does not throw when entry object has exactly one key", () => {

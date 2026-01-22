@@ -9,5 +9,4 @@
 //
 import "./triggers";
 
-
 export { onOpen as handleOpen } from "./triggers";

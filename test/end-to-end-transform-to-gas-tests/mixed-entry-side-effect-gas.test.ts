@@ -11,36 +11,24 @@ import { readStrippedFile } from "../utils/readStrippedFile";
  *  - re-exported GAS symbols have real function bodies
  *  - defining modules for re-exports are not tree-shaken
  */
-test(
-    "mixed-entry-side-effect-gas",
-    async () => {
-        const fixtureDir = path.join(
-            __dirname,
-            "fixtures",
-            "mixed-entry-side-effect-gas"
-        );
+test("mixed-entry-side-effect-gas", async () => {
+    const fixtureDir = path.join(__dirname, "fixtures", "mixed-entry-side-effect-gas");
 
-        const distDir = path.join(fixtureDir, "dist");
+    const distDir = path.join(fixtureDir, "dist");
 
-        fs.rmSync(distDir, { recursive: true, force: true });
-        fs.mkdirSync(distDir, { recursive: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+    fs.mkdirSync(distDir, { recursive: true });
 
-        await runWebpack(path.join(fixtureDir, "webpack.config.js"));
+    await runWebpack(path.join(fixtureDir, "webpack.config.js"));
 
-        const output = readStrippedFile(
-            path.join(distDir, "gas.gs")
-        );
+    const output = readStrippedFile(path.join(distDir, "gas.gs"));
 
-        // Side-effect survived
-        expect(output).toContain("__LOGGER_CONFIGURED__");
+    // Side-effect survived
+    expect(output).toContain("__LOGGER_CONFIGURED__");
 
-        // Function body survived
-        expect(output).toContain("function onOpen");
+    // Function body survived
+    expect(output).toContain("function onOpen");
 
-        // Export surface intact
-        expect(output).toContain(
-            "globalThis.MYADDON.GAS.onOpen = onOpen;"
-        );
-    },
-    30_000
-);
+    // Export surface intact
+    expect(output).toContain("globalThis.MYADDON.GAS.onOpen = onOpen;");
+}, 30_000);

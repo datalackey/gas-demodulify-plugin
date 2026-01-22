@@ -1,6 +1,5 @@
 // Type definitions for strip-comments 3.0  -- shuts up compiler warnings.
 
-
 declare module "strip-comments" {
     /**
      * Removes JavaScript comments from source text.

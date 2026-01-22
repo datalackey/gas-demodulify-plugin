@@ -26,10 +26,7 @@ export const DemodulifyOptionsSchema = z.object({
      *
      * This value becomes the first segment of every emitted namespace path.
      */
-    namespaceRoot: z
-        .string()
-        .min(1, "namespaceRoot must be a non-empty string")
-        .default("DEFAULT"),
+    namespaceRoot: z.string().min(1, "namespaceRoot must be a non-empty string").default("DEFAULT"),
 
     /**
      * Logical subsystem name.
@@ -42,10 +39,7 @@ export const DemodulifyOptionsSchema = z.object({
      * Combined with `namespaceRoot`, this produces the final namespace
      * used for symbol attachment (e.g. "DEFAULT.GAS").
      */
-    subsystem: z
-        .string()
-        .min(1, "subsystem must be a non-empty string")
-        .default("DEFAULT"),
+    subsystem: z.string().min(1, "subsystem must be a non-empty string").default("DEFAULT"),
 
     /**
      * Controls which artifacts are emitted by the plugin.
@@ -58,9 +52,7 @@ export const DemodulifyOptionsSchema = z.object({
      * The current implementation wires this option through the plugin API,
      * but artifact branching logic is handled elsewhere.
      */
-    buildMode: z
-        .enum(["gas", "ui", "common"])
-        .default("gas"),
+    buildMode: z.enum(["gas", "ui", "common"]).default("gas"),
 
     /**
      * Optional logging verbosity.
@@ -71,9 +63,7 @@ export const DemodulifyOptionsSchema = z.object({
      *
      * If omitted, logging defaults to "info".
      */
-    logLevel: z
-        .enum(["silent", "info", "debug"])
-        .default("info"),
+    logLevel: z.enum(["silent", "info", "debug"]).default("info"),
 });
 
 /**
@@ -84,5 +74,4 @@ export const DemodulifyOptionsSchema = z.object({
  *  - Defaults have already been applied
  *  - This type should be used internally by the plugin
  */
-export type GASDemodulifyOptions =
-    z.infer<typeof DemodulifyOptionsSchema>;
+export type GASDemodulifyOptions = z.infer<typeof DemodulifyOptionsSchema>;

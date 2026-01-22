@@ -7,18 +7,10 @@ import fs from "fs";
 
 import { Logger } from "../Logger";
 import { FORBIDDEN_WEBPACK_RUNTIME_PATTERNS } from "../invariants";
-import type {
-    EmitterOpts,
-    ExportBinding,
-    ResolvedEntrypoint
-} from "./types";
-import {
-    resolveTsEntrypoint,
-    assertNoWildcardReexports
-} from "./resolvers";
+import type { EmitterOpts, ExportBinding, ResolvedEntrypoint } from "./types";
+import { resolveTsEntrypoint, assertNoWildcardReexports } from "./resolvers";
 
-export const OUTPUT_BUNDLE_FILENAME_TO_DELETE =
-    "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME";
+export const OUTPUT_BUNDLE_FILENAME_TO_DELETE = "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME";
 
 /**
  * ENFORCED ENTRY MODULE RESTRICTIONS
@@ -30,10 +22,7 @@ export const OUTPUT_BUNDLE_FILENAME_TO_DELETE =
  * ✅ Non-aliased re-exports ARE supported:
  *     export { foo } from "./mod";
  */
-export function getEmitterFunc(
-    compilation: Compilation,
-    opts: EmitterOpts
-) {
+export function getEmitterFunc(compilation: Compilation, opts: EmitterOpts) {
     return () => {
         Logger.debug("Entered processAssets hook");
 
@@ -57,41 +46,21 @@ export function getEmitterFunc(
         );
 
         if (exportBindings.length === 0) {
-            throwEmitError(
-                "No exported symbols found in TypeScript entrypoint."
-            );
+            throwEmitError("No exported symbols found in TypeScript entrypoint.");
         }
 
-        const modulesToEmit = collectModulesToEmit(
-            compilation,
-            entry,
-            exportBindings
-        );
+        const modulesToEmit = collectModulesToEmit(compilation, entry, exportBindings);
 
-        const rawSource = getCombinedModuleSource(
-            compilation,
-            modulesToEmit,
-            entry.runtime
-        );
-        assertAllExportsHaveRuntimeDefinitions(
-            exportBindings,
-            rawSource
-        );
+        const rawSource = getCombinedModuleSource(compilation, modulesToEmit, entry.runtime);
+        assertAllExportsHaveRuntimeDefinitions(exportBindings, rawSource);
 
         const sanitizedSource = sanitizeWebpackHelpers(rawSource);
 
-        const output = getGasSafeOutput(
-            namespace,
-            sanitizedSource,
-            exportBindings
-        );
+        const output = getGasSafeOutput(namespace, sanitizedSource, exportBindings);
 
         cleanupUnwantedOutputFiles(compilation);
 
-        compilation.emitAsset(
-            `${entry.entryName}.gs`,
-            new sources.RawSource(output)
-        );
+        compilation.emitAsset(`${entry.entryName}.gs`, new sources.RawSource(output));
     };
 }
 
@@ -100,9 +69,7 @@ export function getEmitterFunc(
 // ======================================================
 
 function throwEmitError(detail: string): never {
-    throw new Error(
-        `gas-demodulify: Unable to emit code for module.\n${detail}`
-    );
+    throw new Error(`gas-demodulify: Unable to emit code for module.\n${detail}`);
 }
 
 // ======================================================
@@ -115,14 +82,13 @@ function assertNoAliasedReexportsInEntry(entryModule: Module) {
 
     const source = fs.readFileSync(resource, "utf8");
 
-    const ALIASED_REEXPORT_RE =
-        /export\s*\{[^}]*\bas\b[^}]*\}\s*from\s*['"][^'"]+['"]/;
+    const ALIASED_REEXPORT_RE = /export\s*\{[^}]*\bas\b[^}]*\}\s*from\s*['"][^'"]+['"]/;
 
     if (ALIASED_REEXPORT_RE.test(source)) {
         throwEmitError(
             "Unsupported aliased re-export detected in entry module.\n" +
-            "Aliased re-exports do not create runtime identifiers in GAS.\n" +
-            "Define a local wrapper function instead."
+                "Aliased re-exports do not create runtime identifiers in GAS.\n" +
+                "Define a local wrapper function instead."
         );
     }
 }
@@ -138,8 +104,7 @@ function getExportBindings(
     opts: EmitterOpts
 ): ExportBinding[] {
     const bindings: ExportBinding[] = [];
-    const exportsInfo =
-        compilation.moduleGraph.getExportsInfo(entryModule);
+    const exportsInfo = compilation.moduleGraph.getExportsInfo(entryModule);
 
     for (const exportInfo of exportsInfo.orderedExports) {
         if (exportInfo.name === "__esModule") continue;
@@ -148,7 +113,7 @@ function getExportBindings(
             bindings.push({
                 exportName: opts.defaultExportName ?? "defaultExport",
                 localName: "defaultExport",
-                webpackExportName: "default"
+                webpackExportName: "default",
             });
             continue;
         }
@@ -156,7 +121,7 @@ function getExportBindings(
         bindings.push({
             exportName: exportInfo.name,
             localName: exportInfo.name,
-            webpackExportName: exportInfo.name
+            webpackExportName: exportInfo.name,
         });
     }
 
@@ -167,35 +132,20 @@ function getExportBindings(
 // Helpers
 // ======================================================
 
-function getGasSafeOutput(
-    namespace: string,
-    moduleSource: string,
-    exports: ExportBinding[]
-) {
+function getGasSafeOutput(namespace: string, moduleSource: string, exports: ExportBinding[]) {
     return dedent`
         ${renderNamespaceInit(namespace)}
 
         ${moduleSource}
 
-        ${exports
-        .map(
-            e =>
-                `globalThis.${namespace}.${e.exportName} = ${e.localName};`
-        )
-        .join("\n")}
+        ${exports.map(e => `globalThis.${namespace}.${e.exportName} = ${e.localName};`).join("\n")}
     `;
 }
 
-function getModuleSource(
-    compilation: Compilation,
-    module: Module,
-    runtime: any
-): string {
+function getModuleSource(compilation: Compilation, module: Module, runtime: any): string {
     const results = (compilation as any).codeGenerationResults;
     const codeGen = results?.get(module, runtime);
-    const source =
-        codeGen?.sources?.get("javascript") ??
-        codeGen?.sources?.get("js");
+    const source = codeGen?.sources?.get("javascript") ?? codeGen?.sources?.get("js");
 
     return source?.source?.() ? String(source.source()) : "";
 }
@@ -252,23 +202,15 @@ function renderNamespaceInit(namespace: string): string {
     `;
 }
 
-function cleanupUnwantedOutputFiles(
-    compilation: Compilation
-) {
+function cleanupUnwantedOutputFiles(compilation: Compilation) {
     for (const assetName of Object.keys(compilation.assets)) {
-        if (
-            assetName.endsWith(".js") ||
-            assetName === OUTPUT_BUNDLE_FILENAME_TO_DELETE
-        ) {
+        if (assetName.endsWith(".js") || assetName === OUTPUT_BUNDLE_FILENAME_TO_DELETE) {
             compilation.deleteAsset(assetName);
         }
     }
 }
 
-function assertAllExportsHaveRuntimeDefinitions(
-    exports: ExportBinding[],
-    source: string
-) {
+function assertAllExportsHaveRuntimeDefinitions(exports: ExportBinding[], source: string) {
     for (const exp of exports) {
         // Default exports are synthetic bindings
         if (exp.webpackExportName === "default") {
@@ -277,22 +219,19 @@ function assertAllExportsHaveRuntimeDefinitions(
 
         const name = exp.localName;
 
-        const hasFunction =
-            new RegExp(`function\\s+${name}\\s*\\(`).test(source);
+        const hasFunction = new RegExp(`function\\s+${name}\\s*\\(`).test(source);
 
-        const hasClass =
-            new RegExp(`class\\s+${name}\\b`).test(source);
+        const hasClass = new RegExp(`class\\s+${name}\\b`).test(source);
 
-        const hasConst =
-            new RegExp(`(?:const|let|var)\\s+${name}\\b`).test(source);
+        const hasConst = new RegExp(`(?:const|let|var)\\s+${name}\\b`).test(source);
 
         if (!hasFunction && !hasClass && !hasConst) {
             throwEmitError(
                 `Exported symbol '${name}' has no runtime definition.\n` +
-                `This usually means the symbol was re-exported without anchoring its defining module.\n\n` +
-                `Fix:\n` +
-                `  import "./<defining-module>";\n` +
-                `or define the function directly in the entry module.`
+                    `This usually means the symbol was re-exported without anchoring its defining module.\n\n` +
+                    `Fix:\n` +
+                    `  import "./<defining-module>";\n` +
+                    `or define the function directly in the entry module.`
             );
         }
     }

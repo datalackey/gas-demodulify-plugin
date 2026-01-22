@@ -24,9 +24,7 @@ describe("Logger LOGLEVEL environment override", () => {
         Logger.setLevel("silent");
         Logger.debug("env wins");
 
-        expect(logSpy).toHaveBeenCalledWith(
-            "[gas-demodulify][debug] env wins"
-        );
+        expect(logSpy).toHaveBeenCalledWith("[gas-demodulify][debug] env wins");
     });
 
     test("LOGLEVEL override emits warning (unless silent)", () => {
