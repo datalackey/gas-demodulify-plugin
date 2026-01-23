@@ -2,7 +2,6 @@
 
 ## Table of Contents
 
-
 <!-- TOC:START -->
 - [gas-demodulify](#gas-demodulify)
   - [Table of Contents](#table-of-contents)
