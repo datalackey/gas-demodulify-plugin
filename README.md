@@ -603,5 +603,3 @@ If you’re interested in the internal architecture of this plugin or in contrib
 The design discussion also includes a discussion of how webpack typically fits into build pipelines which target
 GAS as an execution environment.
 
-
-
