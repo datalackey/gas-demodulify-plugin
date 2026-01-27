@@ -1,4 +1,4 @@
-import type { Module, Compilation } from "webpack";
+import { Module, Compilation } from "webpack";
 
 /**
  * Configuration options supplied to the code emitter.
@@ -26,8 +26,15 @@ export type ExportBinding = {
 export type ResolvedEntrypoint = {
     entryName: string;
     entryModule: Module;
-    runtime: any;
+    runtime: RuntimeSpec;
     chunks: any[];
 };
 
-export type WebpackCompilation = Compilation;
+/**
+ * Webpack RuntimeSpec (not exported publicly by webpack).
+ *
+ * Represents the runtime name(s) a module is generated for.
+ *
+ * Mirrors Webpack's internal RuntimeSpec type.
+ */
+export type RuntimeSpec = string | Set<string> | undefined;

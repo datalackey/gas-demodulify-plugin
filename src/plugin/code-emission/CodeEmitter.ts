@@ -1,14 +1,22 @@
 // File: src/plugin/code-emission/CodeEmitter.ts
 
-import type { Compilation, Module } from "webpack";
+import type { Module } from "webpack";
+import type { Compilation } from "webpack";
 import { sources } from "webpack";
+
+import type { RuntimeSpec } from "./types";
+import type { EmitterOpts } from "./types";
+import type { ExportBinding } from "./types";
+import type { ResolvedEntrypoint } from "./types";
+
 import dedent from "ts-dedent";
 import fs from "fs";
 
 import { Logger } from "../Logger";
 import { FORBIDDEN_WEBPACK_RUNTIME_PATTERNS } from "../invariants";
-import type { EmitterOpts, ExportBinding, ResolvedEntrypoint } from "./types";
-import { resolveTsEntrypoint, assertNoWildcardReexports } from "./wildcards-resolution-helpers";
+
+import { resolveTsEntrypoint } from "./wildcards-resolution-helpers";
+import { assertNoWildcardReexports } from "./wildcards-resolution-helpers";
 
 export const OUTPUT_BUNDLE_FILENAME_TO_DELETE = "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME";
 
@@ -128,7 +136,11 @@ function getExportBindings(
 // Helpers
 // ======================================================
 
-function getGasSafeOutput(namespace: string, moduleSource: string, exports: ExportBinding[]) {
+function getGasSafeOutput(
+    namespace: string,
+    moduleSource: string,
+    exports: ExportBinding[]
+): string {
     return dedent`
         ${renderNamespaceInit(namespace)}
 
@@ -138,7 +150,7 @@ function getGasSafeOutput(namespace: string, moduleSource: string, exports: Expo
     `;
 }
 
-function getModuleSource(compilation: Compilation, module: Module, runtime: any): string {
+function getModuleSource(compilation: Compilation, module: Module, runtime: RuntimeSpec): string {
     const results = (compilation as any).codeGenerationResults;
     const codeGen = results?.get(module, runtime);
     const source = codeGen?.sources?.get("javascript") ?? codeGen?.sources?.get("js");
@@ -149,12 +161,25 @@ function getModuleSource(compilation: Compilation, module: Module, runtime: any)
 function getCombinedModuleSource(
     compilation: Compilation,
     modules: Module[],
-    runtime: any
+    runtime: unknown
 ): string {
+    assertRuntimeSpec(runtime);
     return modules
         .map(m => getModuleSource(compilation, m, runtime))
         .filter(Boolean)
         .join("\n");
+}
+
+function assertRuntimeSpec(maybeRuntimeSpec: unknown): asserts maybeRuntimeSpec is RuntimeSpec {
+    if (
+        typeof maybeRuntimeSpec === "string" ||
+        maybeRuntimeSpec === undefined ||
+        (maybeRuntimeSpec instanceof Set && [...maybeRuntimeSpec].every(v => typeof v === "string"))
+    ) {
+        return;
+    }
+
+    throw new Error(`Invalid Webpack runtime: ${String(maybeRuntimeSpec)}`);
 }
 
 function collectModulesToEmit(compilation: Compilation, entry: ResolvedEntrypoint): Module[] {
