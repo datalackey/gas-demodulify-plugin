@@ -4,6 +4,8 @@ import type { Module } from "webpack";
 import type { Compilation } from "webpack";
 import { sources } from "webpack";
 
+type WebpackRuntimeSpec = Parameters<import("webpack").CodeGenerationResults["get"]>[1];
+
 import type { RuntimeSpec } from "./types";
 import type { EmitterOpts } from "./types";
 import type { ExportBinding } from "./types";
@@ -19,6 +21,11 @@ import { resolveTsEntrypoint } from "./wildcards-resolution-helpers";
 import { assertNoWildcardReexports } from "./wildcards-resolution-helpers";
 
 export const OUTPUT_BUNDLE_FILENAME_TO_DELETE = "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME";
+
+interface CompilationWithCodeGen extends Compilation {
+    // Define what we need from this web pack internal only type
+    codeGenerationResults?: import("webpack").CodeGenerationResults;
+}
 
 /**
  * ENFORCED ENTRY MODULE RESTRICTIONS
@@ -150,12 +157,42 @@ function getGasSafeOutput(
     `;
 }
 
-function getModuleSource(compilation: Compilation, module: Module, runtime: RuntimeSpec): string {
-    const results = (compilation as any).codeGenerationResults;
-    const codeGen = results?.get(module, runtime);
-    const source = codeGen?.sources?.get("javascript") ?? codeGen?.sources?.get("js");
+function renderRuntime(runtime: RuntimeSpec): string {
+    if (runtime === undefined) return "<default>";
+    if (typeof runtime === "string") return runtime;
+    return `{${[...runtime].join(",")}}`;
+}
 
-    return source?.source?.() ? String(source.source()) : "";
+function getModuleSource(compilation: Compilation, module: Module, runtime: RuntimeSpec): string {
+    const { codeGenerationResults } = compilation as CompilationWithCodeGen;
+    if (codeGenerationResults === undefined) {
+        Logger.debug("codeGenerationResults not available; skipping module source emission");
+        return "";
+    }
+
+    const codeGen = codeGenerationResults.get(module, runtime as WebpackRuntimeSpec);
+    if (!codeGen) {
+        Logger.warn(
+            `No code generation result for module ${module.identifier()} and runtime ${renderRuntime(runtime)}`
+        );
+        return "";
+    }
+
+    const source = codeGen.sources?.get("javascript") ?? codeGen.sources?.get("js");
+    if (!source) {
+        Logger.debug(`No JavaScript source emitted for module ${module.identifier()}`);
+        return "";
+    }
+
+    if (typeof source.source !== "function") {
+        Logger.debug(
+            `No JavaScript source emitted for module ${module.identifier()} source() not a function`
+        );
+        return "";
+    }
+
+    const content = source.source();
+    return content ? String(content) : "";
 }
 
 function getCombinedModuleSource(
@@ -164,9 +201,10 @@ function getCombinedModuleSource(
     runtime: unknown
 ): string {
     assertRuntimeSpec(runtime);
+
     return modules
         .map(m => getModuleSource(compilation, m, runtime))
-        .filter(Boolean)
+        .filter(s => s.length > 0)
         .join("\n");
 }
 
@@ -229,7 +267,6 @@ function cleanupUnwantedOutputFiles(compilation: Compilation) {
 
 function assertAllExportsHaveRuntimeDefinitions(exports: ExportBinding[], source: string) {
     for (const exp of exports) {
-        // Default exports are synthetic bindings
         if (exp.webpackExportName === "default") {
             continue;
         }
@@ -237,9 +274,7 @@ function assertAllExportsHaveRuntimeDefinitions(exports: ExportBinding[], source
         const name = exp.localName;
 
         const hasFunction = new RegExp(`function\\s+${name}\\s*\\(`).test(source);
-
         const hasClass = new RegExp(`class\\s+${name}\\b`).test(source);
-
         const hasConst = new RegExp(`(?:const|let|var)\\s+${name}\\b`).test(source);
 
         if (!hasFunction && !hasClass && !hasConst) {
