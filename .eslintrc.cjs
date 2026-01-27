@@ -31,7 +31,11 @@ module.exports = {
 
         "@typescript-eslint/no-unused-vars": [
             "error",
-            { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+            {
+                args: "all",
+                argsIgnorePattern: "^_",
+                varsIgnorePattern: "^_",
+            },
         ],
 
         "@typescript-eslint/explicit-function-return-type": [

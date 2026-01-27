@@ -8,7 +8,7 @@ import fs from "fs";
 import { Logger } from "../Logger";
 import { FORBIDDEN_WEBPACK_RUNTIME_PATTERNS } from "../invariants";
 import type { EmitterOpts, ExportBinding, ResolvedEntrypoint } from "./types";
-import { resolveTsEntrypoint, assertNoWildcardReexports } from "./resolvers";
+import { resolveTsEntrypoint, assertNoWildcardReexports } from "./wildcards-resolution-helpers";
 
 export const OUTPUT_BUNDLE_FILENAME_TO_DELETE = "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME";
 
@@ -22,7 +22,7 @@ export const OUTPUT_BUNDLE_FILENAME_TO_DELETE = "OUTPUT-BUNDLE-FILENAME-DERIVED-
  * ✅ Non-aliased re-exports ARE supported:
  *     export { foo } from "./mod";
  */
-export function getEmitterFunc(compilation: Compilation, opts: EmitterOpts) {
+export function getEmitterFunc(compilation: Compilation, opts: EmitterOpts): () => void {
     return () => {
         Logger.debug("Entered processAssets hook");
 
@@ -38,18 +38,13 @@ export function getEmitterFunc(compilation: Compilation, opts: EmitterOpts) {
         assertNoWildcardReexports(compilation, entry);
         Logger.info("Validated export surface");
 
-        const exportBindings = getExportBindings(
-            compilation,
-            entry.entryModule,
-            entry.runtime,
-            opts
-        );
+        const exportBindings = getExportBindings(compilation, entry.entryModule, opts);
 
         if (exportBindings.length === 0) {
             throwEmitError("No exported symbols found in TypeScript entrypoint.");
         }
 
-        const modulesToEmit = collectModulesToEmit(compilation, entry, exportBindings);
+        const modulesToEmit = collectModulesToEmit(compilation, entry);
 
         const rawSource = getCombinedModuleSource(compilation, modulesToEmit, entry.runtime);
         assertAllExportsHaveRuntimeDefinitions(exportBindings, rawSource);
@@ -76,8 +71,10 @@ function throwEmitError(detail: string): never {
 // 🚨 Aliased re-export guard (ONLY unsafe case)
 // ======================================================
 
-function assertNoAliasedReexportsInEntry(entryModule: Module) {
-    const resource = (entryModule as any)?.resource;
+function assertNoAliasedReexportsInEntry(entryModule: Module): void {
+    // Avoid `any` by treating the module as an unknown shape and checking for `resource` safely
+    const maybeWithResource = entryModule as unknown as { resource?: unknown };
+    const resource = maybeWithResource.resource;
     if (typeof resource !== "string") return;
 
     const source = fs.readFileSync(resource, "utf8");
@@ -100,7 +97,6 @@ function assertNoAliasedReexportsInEntry(entryModule: Module) {
 function getExportBindings(
     compilation: Compilation,
     entryModule: Module,
-    runtime: any,
     opts: EmitterOpts
 ): ExportBinding[] {
     const bindings: ExportBinding[] = [];
@@ -161,11 +157,7 @@ function getCombinedModuleSource(
         .join("\n");
 }
 
-function collectModulesToEmit(
-    compilation: Compilation,
-    entry: ResolvedEntrypoint,
-    exports: ExportBinding[]
-): Module[] {
+function collectModulesToEmit(compilation: Compilation, entry: ResolvedEntrypoint): Module[] {
     const set = new Set<Module>();
 
     set.add(entry.entryModule);

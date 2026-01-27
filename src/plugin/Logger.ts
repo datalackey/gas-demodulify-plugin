@@ -18,7 +18,7 @@ export const Logger = {
      */
     setLevel(configured?: LogLevel) {
         const overrideLevel = process.env.LOGLEVEL;
-        if (overrideLevel) {
+        if (overrideLevel !== undefined && overrideLevel !== "") {
             currentLevel = validateLogLevel(overrideLevel);
             if (currentLevel !== "silent") {
                 console.info(
