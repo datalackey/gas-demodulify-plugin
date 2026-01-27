@@ -1,0 +1,42 @@
+
+If an export is re-exported, but its defining module has no codegen output,
+that export is invalid for GAS emission.
+
+this is one of the errors that occcurred around this point in commit history > 
+
+    commit 267308cde89938a277a420eb20d9f727f5f18895 (HEAD -> main, origin/main)
+    Author: chris <chris@buildlackey.com>
+    Date:   Thu Jan 8 18:11:43 2026 -0800
+
+        freeze failing test before the fix
+
+need to really understand this.
+
+Rule
+Every exported symbol must correspond to an identifier defined in emitted JS code.
+
+    
+
+
+
+
+
+t Object.<anonymous> (/home/chris/gas-demodulify-plugin/test/end-to-end-transform-to-gas-tests/reexport-entrypoint-missing-exports-gas.test.ts:15:15)
+        this test when run -- shows we have output src to emit .. but cud not find file in dist
+
+
+
+
+
+
+dont forget the missing test: 
+    we need to explicitly support this type of entry:
+            // src/gas/index.ts
+            export { onOpen } from "./triggers/onOpen";
+            export { doFoo } from "./api/foo";
+            export { doBar } from "./api/bar";
+
+
+
+
+

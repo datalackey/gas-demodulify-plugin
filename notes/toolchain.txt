@@ -1,0 +1,218 @@
+* npm package hygiene:
+
+        npm deprecate gas-demodulify-plugin@"<=0.1.0" \
+          "Contains critical bugs, please upgrade to >=0.1.1"
+        Users will see a warning on install.
+
+
+
+
+* source maps:  mentinon>
+    Stack traces are sometimes truncated
+    Line numbers may point near, not exact
+    Inline source maps help sometimes, not always
+    Execution context (trigger vs UI) affects logs
+
+
+* for our webpack plugin  - we might want to rethink having multiple artifacts for common stuff... 
+    - we should just let that code get sucked into the bundle
+
+
+* consider building: a Webpack stats-based GAS debugging checklist
+
+
+
+* always use explicit relative paths in imports: 
+
+    import { foo } from "./logic/foo";         // if same folder
+    import { foo } from "../logic/foo";        // if one folder up
+    import { foo } from "../../logic/foo";     // etc
+
+
+* dont use index.ts
+    - can we autodiscover what lives in src/<SUBSYSTEM> and include each one as entries ?
+
+
+* diagnostic err msgs:
+
+    When TS + Webpack + Jest resolve imports differently, you get predictable categories of failures:
+
+    TS failure (compile-time)
+
+    “Cannot find module”
+    → Fix tsconfig/import path
+
+    Webpack failure (bundle-time)
+
+    “Module not found: Error: Can't resolve”
+    → Fix Webpack resolve/import path mismatch
+
+
+
+
+* avoid aliases
+
+    dont:
+        import { LatLong } from "@/logic/LatLong";
+
+
+
+* make sure imports are resolvable:
+
+    Safe rules for your GAS project
+
+    These settings will give you a bulletproof environment.
+
+    🟢 GOOD:
+    import { Something } from "../folder/FileName";
+
+    🟢 GOOD:
+
+    Your Webpack resolve config:
+
+    resolve: {
+      extensions: [".ts", ".js"]
+    }
+
+    🟢 GOOD:
+
+    Your tsconfig:
+
+    "moduleResolution": "Node"
+
+
+* Gas :  separation of core non-google-API dependent logic and shim that DOES use google GAS API's
+        GAS functions can be made Node-safe with a simple technique
+        Technique:
+
+        Extract your pure logic into separate modules,
+        and wrap GAS-only code in tiny glue functions.
+
+        Example:
+
+        src/gas/PopulateLatLong.ts (actual GAS entry point):
+        function populateLatLong() {
+          const sheet = SpreadsheetApp.getActiveSheet();
+          const rows = sheet.getDataRange().getValues();
+          const updated = populateLatLongCore(rows);   // <-- pure logic
+          sheet.getRange(1, 1, updated.length, updated[0].length).setValues(updated);
+        }
+
+        src/common/populateLatLongCore.ts:
+        export function populateLatLongCore(rows: any[][]): any[][] {
+          return rows.map(r => /* transform */);
+        }
+
+
+        Because populateLatLongCore:
+        - has no GAS references
+        - relies only on inputs and outputs
+            …it can be fully tested in Node.
+
+* ts config  hierarchy :
+
+    Part 1 — tsconfig.base.json (shared foundation)
+    This file is inherited by:
+
+        common
+        ui
+        gas
+
+
+    It contains only safe, global options you want everywhere.
+    {
+      "compilerOptions": {
+        "target": "ES2018",
+
+        // This setting determines what kind of JavaScript module syntax TypeScript outputs in the compiled .js files
+        "module": "ESNext", // If TS compiled to "commonjs" or "amd", Webpack would lose tree-shaking and code splitting.
+
+        "moduleResolution": "node",      // IMPORTANT (already saved in notes)
+        "strict": true,
+        "esModuleInterop": true,
+        "isolatedModules": false
+
+
+    NOTE: ⭐ 2. "moduleResolution" controls how TS finds modules
+
+                This setting determines how TypeScript resolves import paths you write in your .ts files.
+
+                "moduleResolution": "node" tells TS:
+
+                handle "../common/Logger"
+
+                look for .ts / .js / .d.ts
+
+                follow Node directory traversal rules
+
+                follow index.ts fallback
+
+                This affects compile-time path resolution, not emitted code.
+
+
+source maps:
+    https://webpack.js.org/guides/typescript/
+        tsconfig.json
+                 "sourceMap": true,
+        webpack.config.js
+                   devtool: 'inline-source-map',
+
+
+
+Typescript configuration:
+
+
+    ⭐ 1. tsconfig.base.json
+
+    (shared by UI + GAS + common)
+
+    This file contains ONLY safe, global settings that all subsystems need.
+
+    {
+      "compilerOptions": {
+        // Keep syntax modern but GAS-compatible
+        "target": "ES2018",
+
+        // Keep ES module syntax for bundlers + Jest
+        "module": "ESNext",
+
+        // Extremely important for your project
+        "moduleResolution": "node",
+
+        // Strictness
+        "strict": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true,
+
+        // Don't emit code unless invoked by a specific config
+        "noEmit": true,
+
+        // Help TypeScript understand absolute + relative paths correctly
+        "resolveJsonModule": true
+      },
+      "include": [
+        "src/**/*"
+      ]
+    }
+
+            
+
+    ⭐ 2. tsconfig.common.json
+
+    (for shared code used by UI + GAS)
+
+    The common layer is pure TypeScript logic — no GAS APIs — so this config is extremely simple.
+
+    {
+      "extends": "./tsconfig.base.json",
+      "compilerOptions": {
+        "noEmit": true   // common never emits JS directly
+      },
+      "include": ["src/common/**/*"]
+    }
+
+
+
+
+

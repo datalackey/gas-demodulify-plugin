@@ -1,0 +1,17 @@
+
+add a regression test asserting function bodies exist
+
+add a test proving side-effect loss if entry module is skipped
+
+
+Case: mixed entry module
+Logger.configure();
+export { onOpen } from "./triggers";
+
+
+➡ Logger.configure() is preserved
+
+Case: local + re-export
+export function foo() {}
+export { onOpen } from "./triggers";
+

@@ -1,0 +1,185 @@
+Lesson Learned: Re-exports Don’t Create Runtime Code (and GAS Cares)
+
+While building a Webpack plugin to flatten TypeScript modules into Google Apps Script–compatible output, I ran into a bug that turned out to be far more instructive than expected. The fix wasn’t a clever Webpack hack — it was understanding a fundamental mismatch between GAS and modern JavaScript bundlers.
+
+This section documents that lesson.
+
+The Mental Model Mismatch
+
+Google Apps Script and Webpack answer very different questions:
+
+GAS asks:
+“Is there a global function named onOpen at runtime?”
+
+Webpack asks:
+“Is there any JavaScript code that executes or references this function?”
+
+Those questions sound similar — but they are not equivalent.
+
+The Non-Working Example (Looks Correct, Fails Quietly)
+
+Consider a very common “barrel-style” setup:
+
+// src/gas/index.ts
+export { onOpen } from "./triggers";
+
+// src/gas/triggers.ts
+export function onOpen() {
+  SpreadsheetApp.getUi().createMenu("My Menu").addToUi();
+}
+
+
+At first glance, this looks perfectly reasonable:
+
+onOpen is exported
+
+The function exists
+
+GAS will call onOpen when the spreadsheet opens
+
+But this does not work when bundled with Webpack.
+
+Why?
+
+What Webpack Actually Sees
+
+From Webpack’s perspective:
+
+index.ts has no executable code
+
+triggers.ts:
+
+exports a function
+
+but has no top-level side effects
+
+and the function is never called
+
+Re-exporting a symbol does not count as using it
+
+So Webpack concludes:
+
+“Nothing in triggers.ts is needed at runtime.”
+
+Result:
+
+triggers.ts is tree-shaken
+
+no JavaScript is generated for it
+
+the function body never makes it into the bundle
+
+By the time GAS runs, there is no onOpen function to call.
+
+This failure would happen even without a custom plugin — it’s pure ES module semantics.
+
+Why This Feels So Wrong to GAS Developers
+
+In GAS:
+
+Functions are discovered dynamically
+
+A function doesn’t need to be referenced to be callable
+
+The runtime looks for onOpen by name
+
+But Webpack cannot see GAS.
+
+It has no idea that:
+
+an external host will later call onOpen
+
+the function name has special meaning
+
+“being present” matters more than “being executed”
+
+From Webpack’s point of view, GAS is invisible.
+
+The Rule That Makes This Work
+
+Any GAS hook function must be anchored in the entry module at runtime.
+
+That means Webpack must be forced to execute or retain the module that defines it.
+
+The Trick That Fixes Everything
+✅ Side-effect import
+// src/gas/index.ts
+export { onOpen } from "./triggers";
+
+// 👇 This is the critical line
+import "./triggers";
+
+
+Why this works:
+
+import "./triggers" is a side-effect import
+
+It tells Webpack:
+
+“This module must be executed”
+
+Webpack is now required to generate code for triggers.ts
+
+The onOpen function body survives bundling
+
+GAS can now find and call it
+
+This one line is often the difference between a working and non-working GAS build.
+
+Other Valid Patterns
+Define the function directly in the entry module
+export function onOpen() {
+  SpreadsheetApp.getUi().createMenu("My Menu").addToUi();
+}
+
+Explicitly rebind the function
+import { onOpen as _onOpen } from "./triggers";
+
+export function onOpen() {
+  return _onOpen();
+}
+
+
+Both approaches ensure the function is present at runtime.
+
+The Pattern That Does Not Work
+export { onOpen } from "./triggers";
+
+
+This creates type-level linkage, not runtime code.
+
+The Takeaway
+
+Re-exports do not imply execution
+
+Exports do not imply runtime presence
+
+Webpack removes code that is not referenced or executed
+
+GAS calls do not count as references
+
+Side-effect imports are the bridge between the two worlds
+
+Once you internalize this, a lot of “mysterious” GAS + Webpack behavior suddenly makes sense.
+
+Why This Matters Beyond Plugins
+
+Even if you never write a Webpack plugin:
+
+this affects any GAS project using modern bundlers
+
+the failure mode is silent and confusing
+
+the fix is simple — once you know it
+
+This is one of those cases where the tools are doing exactly what they’re designed to do — just not what you expected.
+
+If you want next, I can:
+
+tighten this into a blog-ready tone,
+
+add diagrams explaining the runtime boundary,
+
+or help you frame this as a “GAS + Modern JS” best-practices section.
+
+This was a genuinely valuable debugging journey — worth publishing

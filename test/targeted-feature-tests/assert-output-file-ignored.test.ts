@@ -53,6 +53,6 @@ describe("output.filename sentinel enforcement", () => {
 
         expect(() => {
             plugin.apply(compiler);
-        }).toThrow();       // deliberate fail -- again
+        }).not.toThrow();
     });
 });
