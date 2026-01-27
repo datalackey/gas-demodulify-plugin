@@ -163,6 +163,42 @@ function renderRuntime(runtime: RuntimeSpec): string {
     return `{${[...runtime].join(",")}}`;
 }
 
+function describeValue(value: unknown): string {
+    if (value === null) return "null";
+    if (value === undefined) return "undefined";
+
+    // Don't think about extracting out 'type of value' into variable: es-lint will punish you for it
+    if (typeof value === "string") return value;
+    if (typeof value === "number") return String(value);
+    if (typeof value === "boolean") return String(value);
+    if (typeof value === "bigint") return String(value);
+    if (typeof value === "symbol") return String(value);
+    if (typeof value === "function") return "[Function]";
+
+    if (typeof value === "object" && value !== null && value instanceof Set) {
+        const parts = Array.from(value.values()).map(v => describeValue(v));
+        return `Set(${parts.length}){${parts.join(",")}}`;
+    }
+
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return Object.prototype.toString.call(value);
+    }
+}
+
+function assertChunk(maybeChunk: unknown): asserts maybeChunk is import("webpack").Chunk {
+    if (typeof maybeChunk !== "object" || maybeChunk === null) {
+        throw new Error(`Invalid Webpack chunk: ${describeValue(maybeChunk)}`);
+    }
+
+    // We avoid deep structural assumptions. We just require an identifier-like field.
+    const maybeChunkObj = maybeChunk as { id?: unknown; name?: unknown };
+    if (maybeChunkObj.id === undefined && maybeChunkObj.name === undefined) {
+        throw new Error(`Invalid Webpack chunk: ${describeValue(maybeChunk)}`);
+    }
+}
+
 function getModuleSource(compilation: Compilation, module: Module, runtime: RuntimeSpec): string {
     const { codeGenerationResults } = compilation as CompilationWithCodeGen;
     if (codeGenerationResults === undefined) {
@@ -171,7 +207,7 @@ function getModuleSource(compilation: Compilation, module: Module, runtime: Runt
     }
 
     const codeGen = codeGenerationResults.get(module, runtime as WebpackRuntimeSpec);
-    if (!codeGen) {
+    if (codeGen === undefined) {
         Logger.warn(
             `No code generation result for module ${module.identifier()} and runtime ${renderRuntime(runtime)}`
         );
@@ -179,7 +215,7 @@ function getModuleSource(compilation: Compilation, module: Module, runtime: Runt
     }
 
     const source = codeGen.sources?.get("javascript") ?? codeGen.sources?.get("js");
-    if (!source) {
+    if (source === undefined) {
         Logger.debug(`No JavaScript source emitted for module ${module.identifier()}`);
         return "";
     }
@@ -192,7 +228,11 @@ function getModuleSource(compilation: Compilation, module: Module, runtime: Runt
     }
 
     const content = source.source();
-    return content ? String(content) : "";
+    if (content === undefined || content === null) {
+        return "";
+    }
+
+    return String(content);
 }
 
 function getCombinedModuleSource(
@@ -217,7 +257,7 @@ function assertRuntimeSpec(maybeRuntimeSpec: unknown): asserts maybeRuntimeSpec 
         return;
     }
 
-    throw new Error(`Invalid Webpack runtime: ${String(maybeRuntimeSpec)}`);
+    throw new Error(`Invalid Webpack runtime: ${describeValue(maybeRuntimeSpec)}`);
 }
 
 function collectModulesToEmit(compilation: Compilation, entry: ResolvedEntrypoint): Module[] {
@@ -226,6 +266,8 @@ function collectModulesToEmit(compilation: Compilation, entry: ResolvedEntrypoin
     set.add(entry.entryModule);
 
     for (const chunk of entry.chunks) {
+        assertChunk(chunk);
+
         for (const m of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
             set.add(m);
         }
@@ -257,7 +299,7 @@ function renderNamespaceInit(namespace: string): string {
     `;
 }
 
-function cleanupUnwantedOutputFiles(compilation: Compilation) {
+function cleanupUnwantedOutputFiles(compilation: Compilation): void {
     for (const assetName of Object.keys(compilation.assets)) {
         if (assetName.endsWith(".js") || assetName === OUTPUT_BUNDLE_FILENAME_TO_DELETE) {
             compilation.deleteAsset(assetName);
@@ -265,7 +307,7 @@ function cleanupUnwantedOutputFiles(compilation: Compilation) {
     }
 }
 
-function assertAllExportsHaveRuntimeDefinitions(exports: ExportBinding[], source: string) {
+function assertAllExportsHaveRuntimeDefinitions(exports: ExportBinding[], source: string): void {
     for (const exp of exports) {
         if (exp.webpackExportName === "default") {
             continue;
