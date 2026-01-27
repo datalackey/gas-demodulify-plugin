@@ -48,7 +48,7 @@ class GASDemodulifyPlugin {
      *
      * @param compiler The active Webpack compiler instance
      */
-    apply(compiler: Compiler) {
+    apply(compiler: Compiler): void {
         assertOutputFileIgnored(compiler);
         assertSingleEntry(compiler);
 
@@ -94,7 +94,7 @@ class GASDemodulifyPlugin {
     }
 }
 
-function assertOutputFileIgnored(compiler: Compiler) {
+function assertOutputFileIgnored(compiler: Compiler): void {
     const output = compiler.options.output;
     const filename = output?.filename;
 
@@ -114,10 +114,10 @@ function assertOutputFileIgnored(compiler: Compiler) {
     }
 }
 
-function assertSingleEntry(compiler: Compiler) {
+function assertSingleEntry(compiler: Compiler): void {
     const entry = compiler.options.entry;
 
-    if (!entry) {
+    if (entry === undefined) {
         throw new Error(
             "GASDemodulifyPlugin requires a Webpack entry object with exactly one entrypoint"
         );
@@ -127,7 +127,7 @@ function assertSingleEntry(compiler: Compiler) {
             "GASDemodulifyPlugin requires exactly one Webpack entry (function entries are not supported)"
         );
     }
-    if (typeof (entry as any) === "string") {
+    if (typeof entry === "string") {
         throw new Error(
             "GASDemodulifyPlugin requires an object-based Webpack entry with exactly one named entrypoint"
         );
@@ -137,8 +137,10 @@ function assertSingleEntry(compiler: Compiler) {
             "GASDemodulifyPlugin requires exactly one Webpack entry (array entries are not supported)"
         );
     }
-    if (typeof entry === "object") {
-        const keys = Object.keys(entry);
+
+    // Now handle object-style entries. Be explicit about null and array checks
+    if (typeof entry === "object" && entry !== null) {
+        const keys = Object.keys(entry as Record<string, unknown>);
         if (keys.length !== 1) {
             throw new Error(
                 `GASDemodulifyPlugin requires exactly one Webpack entry, but found ${keys.length}: [${keys.join(", ")}]`
