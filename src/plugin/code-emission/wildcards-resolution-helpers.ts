@@ -7,6 +7,17 @@ import { Logger } from "../Logger";
 import type { ResolvedEntrypoint } from "./shared-types";
 
 /**
+ * Minimal structural shape of a Webpack Entrypoint that we rely on.
+ *
+ * This intentionally avoids importing Webpack's internal Entrypoint type,
+ * which is not part of the public API.
+ */
+type EntrypointLike = {
+    chunks?: Iterable<Chunk>;
+    getEntrypointChunk?: () => Chunk;
+};
+
+/**
  * Resolves the single TypeScript-authored entrypoint.
  */
 export function resolveTsEntrypoint(compilation: Compilation): ResolvedEntrypoint {
@@ -14,27 +25,33 @@ export function resolveTsEntrypoint(compilation: Compilation): ResolvedEntrypoin
 
     const candidates: ResolvedEntrypoint[] = [];
 
-    for (const [entryName, entrypoint] of compilation.entrypoints) {
+    for (const [entryName, rawEntrypoint] of compilation.entrypoints) {
         Logger.debug(`Inspecting entrypoint '${entryName}'`);
 
-        const chunks: any[] = Array.from(
-            (entrypoint as any).chunks ??
-                (entrypoint.getEntrypointChunk ? [entrypoint.getEntrypointChunk()] : [])
-        );
-
+        const entrypoint = rawEntrypoint as unknown as EntrypointLike;
+        let chunks: Chunk[] = [];
+        if (entrypoint.chunks !== undefined) {
+            chunks = Array.from(entrypoint.chunks);
+        } else if (entrypoint.getEntrypointChunk !== undefined) {
+            chunks = [entrypoint.getEntrypointChunk()];
+        }
         Logger.debug(`Entrypoint '${entryName}' has ${chunks.length} chunk(s)`);
 
         for (const chunk of chunks) {
             const runtime = chunk.runtime;
 
-            for (const m of compilation.chunkGraph.getChunkEntryModulesIterable(chunk)) {
-                const res = (m as any)?.resource;
-                if (typeof res === "string" && (res.endsWith(".ts") || res.endsWith(".tsx"))) {
-                    Logger.debug(`Found TS entry module for '${entryName}': ${res}`);
+            for (const entryModule of compilation.chunkGraph.getChunkEntryModulesIterable(chunk)) {
+                const resource = (entryModule as { resource?: unknown }).resource; // chunk entry module has resource?
+
+                if (
+                    typeof resource === "string" &&
+                    (resource.endsWith(".ts") || resource.endsWith(".tsx"))
+                ) {
+                    Logger.debug(`Found TS entry module for '${entryName}': ${resource}`);
 
                     candidates.push({
                         entryName,
-                        entryModule: m,
+                        entryModule: entryModule,
                         runtime,
                         chunks,
                     });
@@ -66,11 +83,15 @@ export function resolveTsEntrypoint(compilation: Compilation): ResolvedEntrypoin
 // Wildcard re-export guard
 const exportStarRe = /export\s*\*\s*(?:as\s+\w+\s*)?(?:from\s+['"]|;)/;
 
-export function assertNoWildcardReexports(compilation: Compilation, entry: ResolvedEntrypoint) {
+export function assertNoWildcardReexports(
+    compilation: Compilation,
+    entry: ResolvedEntrypoint
+): void {
     const chunks = entry.chunks as Chunk[];
+
     for (const chunk of chunks) {
         for (const module of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
-            const resource = (module as any)?.resource;
+            const resource = (module as { resource?: unknown }).resource;
 
             if (
                 typeof resource === "string" &&
@@ -79,9 +100,11 @@ export function assertNoWildcardReexports(compilation: Compilation, entry: Resol
                 const abs = path.isAbsolute(resource)
                     ? resource
                     : path.resolve(
-                          (compilation as any).options?.context ?? process.cwd(),
+                          (compilation as { options?: { context?: string } }).options?.context ??
+                              process.cwd(),
                           resource
                       );
+
                 if (fs.existsSync(abs)) {
                     const content = fs.readFileSync(abs, "utf8");
                     if (exportStarRe.test(content)) {
@@ -93,7 +116,7 @@ export function assertNoWildcardReexports(compilation: Compilation, entry: Resol
             const exportsInfo = compilation.moduleGraph.getExportsInfo(module);
             const other = exportsInfo.otherExportsInfo;
 
-            if (other && other.provided === true) {
+            if (other !== undefined && other.provided === true) {
                 throw unsupportedWildcardError(`Module: ${resource ?? "<synthetic>"}`);
             }
         }
