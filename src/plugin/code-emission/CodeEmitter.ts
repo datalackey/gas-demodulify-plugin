@@ -6,10 +6,10 @@ import { sources } from "webpack";
 
 type WebpackRuntimeSpec = Parameters<import("webpack").CodeGenerationResults["get"]>[1];
 
-import type { RuntimeSpec } from "./types";
-import type { EmitterOpts } from "./types";
-import type { ExportBinding } from "./types";
-import type { ResolvedEntrypoint } from "./types";
+import type { RuntimeSpec } from "./shared-types";
+import type { EmitterOpts } from "./shared-types";
+import type { ExportBinding } from "./shared-types";
+import type { ResolvedEntrypoint } from "./shared-types";
 
 import dedent from "ts-dedent";
 import fs from "fs";

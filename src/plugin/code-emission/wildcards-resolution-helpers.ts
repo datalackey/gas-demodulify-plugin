@@ -2,7 +2,7 @@ import type { Compilation, Module } from "webpack";
 import fs from "fs";
 import path from "path";
 import { Logger } from "../Logger";
-import type { ResolvedEntrypoint } from "./types";
+import type { ResolvedEntrypoint } from "./shared-types";
 
 /**
  * Resolves the single TypeScript-authored entrypoint.
