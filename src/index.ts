@@ -30,7 +30,7 @@
  * Implementation details:
  * - Uses TypeScript `export =` syntax so the compiled output is:
  *     `module.exports = PluginConstructor`
- * - Uses `require()` import style intentionally to preserve CommonJS semantics.
+ * - Users of plugin use `require()` import style intentionally to preserve CommonJS semantics.
  *
  * Note on linting:
  * - `require()` usage in this file is deliberate and confined to this

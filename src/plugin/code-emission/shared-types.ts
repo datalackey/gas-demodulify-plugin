@@ -1,4 +1,4 @@
-import { Module, Compilation } from "webpack";
+import { Module } from "webpack";
 
 /**
  * Contains types that are SHARED ACROSS MODULES in the plugin code base.
@@ -48,5 +48,5 @@ export type ResolvedEntrypoint = {
     entryName: string;
     entryModule: Module;
     runtime: RuntimeSpec;
-    chunks: any[];
+    chunks: unknown[];
 };

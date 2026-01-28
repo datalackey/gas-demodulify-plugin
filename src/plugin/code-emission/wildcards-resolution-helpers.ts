@@ -1,4 +1,6 @@
-import type { Compilation, Module } from "webpack";
+import type { Compilation } from "webpack";
+import type { Chunk } from "webpack";
+
 import fs from "fs";
 import path from "path";
 import { Logger } from "../Logger";
@@ -65,7 +67,8 @@ export function resolveTsEntrypoint(compilation: Compilation): ResolvedEntrypoin
 const exportStarRe = /export\s*\*\s*(?:as\s+\w+\s*)?(?:from\s+['"]|;)/;
 
 export function assertNoWildcardReexports(compilation: Compilation, entry: ResolvedEntrypoint) {
-    for (const chunk of entry.chunks) {
+    const chunks = entry.chunks as Chunk[];
+    for (const chunk of chunks) {
         for (const module of compilation.chunkGraph.getChunkModulesIterable(chunk)) {
             const resource = (module as any)?.resource;
 
