@@ -313,14 +313,13 @@ We need a notion of a 'RuntimeSpec' because Webpack’s code-generation pipeline
 is runtime-aware, and any plugin that inspects or emits generated code must respect
 runtime scoping to be correct.
 
-More precisely:
+Webpack can generate different code per runtime, and a single module may be generated multiple times, once per runtime.
+Runtime might be any of:
 
-- Webpack can generate different code per runtime
-  In Webpack, a single module may be generated multiple times, once per runtime, where runtime might be any of:
-    - main runtime
-    - async runtime(s)
-    - worker runtimes
-    - multiple entrypoints with distinct runtimes
+- main runtime
+- async runtime(s)
+- worker runtimes
+- multiple entrypoints with distinct runtimes
 
 Webpack therefore does not store a single “generated source” per module.
 Instead, it stores code-generation results keyed by runtime.
@@ -340,8 +339,7 @@ type WebpackRuntimeSpec = Parameters<import("webpack").CodeGenerationResults["ge
 
 This ensures that when we interact with Webpack APIs, we supply exactly the type Webpack expects,
 even though Webpack does not export the underlying alias.
-This is a deliberate, contract-level dependency, where we attempt to express our
-dependency on Webpack’s Internal API surface as minimally as possible.
+This is a deliberate attempt to express our dependency on Webpack’s Internal API surface as minimally as possible.
 
 ### Why We Do Not Use WebpackRuntimeSpec as Our Internal Runtime Type
 
@@ -353,120 +351,16 @@ export type RuntimeSpec = string | Set<string> | undefined;
 ````
 
 WebpackRuntimeSpec reflects Webpack’s current internal representation, which specifies a sortable set with deterministic
-ordering, rather than an abstract Set. Since our code does not rely on such ordering guarantees, we avoid coupling
-to them by defining our own simpler type.
+ordering, rather than an abstract Set. Since our code does not rely on such ordering guarantees, we avoid
+overspecification/coupling by defining our own simpler type. We pull out the RuntimeSpec via entry.runtime, which we
+type
+initially as 'unknown' (since there is no published guarantee we can rely on), but we
+then prove to the type checker that it is compatible with our RuntimeSpec type if it passes the guard
+[assertRuntimeSpec](https://github.com/datalackey/gas-demodulify-plugin/blob/bfe9372eb7133b0edb17f26d8c9441d86af90ab6/src/plugin/code-emission/CodeEmitter.ts#L251)
 
-function getModuleSource(compilation: Compilation, module: Module, runtime: RuntimeSpec): string {
-const { codeGenerationResults } = compilation as CompilationWithCodeGen;
-if (codeGenerationResults === undefined) {
-Logger.debug("codeGenerationResults not available; skipping module source emission");
-return "";
-}
-
-    const codeGen = codeGenerationResults.get(module, runtime as WebpackRuntimeSpec);
-
-2. Avoid leaking Webpack internals into our domain model
-
-If we used WebpackRuntimeSpec directly throughout our code, we would be forcing:
-
-Webpack’s internal data structures
-
-ordering guarantees
-
-and future representation choices
-
-into places where they have no semantic relevance.
-
-By using a simple Set<string> internally, we:
-
-keep our domain model minimal and precise
-
-isolate Webpack-specific concerns at the integration boundary
-
-avoid cascading changes if Webpack alters its internal runtime representation
-
-3. Localize and fail fast on breaking changes
-
-All assumptions about Webpack’s runtime representation are intentionally localized to a single boundary.
-
-If Webpack changes the type it expects:
-
-the derived WebpackRuntimeSpec alias will fail to compile, or
-
-the adapter layer will surface the mismatch immediately
-
-This provides a fail-fast upgrade signal, without forcing internal logic to change.
-
-describe why we don't use this type directly, but instead define our own RuntimeSpec type... explain
-reasons
-related to desire to couple to sorterdSet implementation.
-
-Our plugin consumes Webpack’s code-generation results --
-inspects and emits code using Webpack’s
-CodeGenerationResults.get(module, runtime) API.
-
-That API requires a runtime spec because:
-
-The same module may have different output depending on the runtime
-
-The runtime affects:
-
-- bootstrap code
-- chunk loading logic
-- globals availability
-- execution environment assumptions
-
-Runtime awareness is not optional. If we ignored runtime scoping, we could end up:
-
-- emitting the wrong code
-- mixing incompatible runtime variants
-- breaking multi-entry or async builds in subtle ways
-
-
-3. Why we model RuntimeSpec internally instead of passing it through blindly
-
-We introduce our own RuntimeSpec type because:
-
-We need to carry runtime information through our own logic
-
-Webpack’s internal RuntimeSpec is:
-
-not publicly exported
-
-more specific than we need
-
-tied to Webpack’s internal ordering guarantees
-
-Our code only needs to know:
-
-“Which runtime(s) does this operation apply to?”
-
-We do not need:
-
-ordering
-
-sort stability
-
-Webpack’s internal SortableSet mechanics
-
-So we model runtime membership abstractly and adapt at the integration boundary.
-
-4. Why this is architecturally correct
-
-This design gives us:
-
-Correctness — runtime-scoped code generation
-
-Isolation — Webpack internals don’t leak into our domain model
-
-Maintainability — future Webpack changes are localized
-
-Testability — simple sets are easy to construct and reason about
-
-The key principle is:
-
-RuntimeSpec is domain data in our code,
-but API-specific data at the Webpack boundary.
+When we pass the instance of our more abstract type back to the Webpack API, we adapt it back to WebpackRuntimeSpec
+([here](https://github.com/datalackey/gas-demodulify-plugin/blob/bfe9372eb7133b0edb17f26d8c9441d86af90ab6/src/plugin/code-emission/CodeEmitter.ts#L209)),
+because we know that, in this call back, the most we will ever need is set membership testability, not set sortability.
 
 ## Addenda: Understanding webpack_require
 

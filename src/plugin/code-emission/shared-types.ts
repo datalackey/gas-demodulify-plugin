@@ -28,11 +28,16 @@ export type ExportBinding = {
 };
 
 /**
- * Webpack RuntimeSpec (not exported publicly by webpack).
+ * Internal runtime specification used by this project.
  *
- * Represents the runtime name(s) a module is generated for.
+ * Represents the runtime name(s) a module’s generated code applies to.
  *
- * Mirrors Webpack's internal RuntimeSpec type: WebpackRuntimeSpec
+ * Conceptually corresponds to Webpack’s internal `RuntimeSpec` type
+ * (which is not publicly exported), but intentionally models *membership only*.
+ * Ordering guarantees required by Webpack are handled at the integration boundary.
+ *
+ * See:
+ * https://github.com/datalackey/gas-demodulify-plugin/blob/main/docs/plugin-design.md#rationale-for-referencing-webpacks-internal-runtimespec
  */
 export type RuntimeSpec = string | Set<string> | undefined;
 

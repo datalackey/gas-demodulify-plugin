@@ -4,8 +4,6 @@ import type { Module } from "webpack";
 import type { Compilation } from "webpack";
 import { sources } from "webpack";
 
-type WebpackRuntimeSpec = Parameters<import("webpack").CodeGenerationResults["get"]>[1];
-
 import type { RuntimeSpec } from "./shared-types";
 import type { EmitterOpts } from "./shared-types";
 import type { ExportBinding } from "./shared-types";
@@ -26,6 +24,14 @@ interface CompilationWithCodeGen extends Compilation {
     // Define what we need from this web pack internal only type
     codeGenerationResults?: import("webpack").CodeGenerationResults;
 }
+
+/**
+ * Webpack's internal structure encoding a runtime specification.
+ *
+ * See:
+ * https://github.com/datalackey/gas-demodulify-plugin/blob/main/docs/plugin-design.md#rationale-for-referencing-webpacks-internal-runtimespec
+ */
+type WebpackRuntimeSpec = Parameters<import("webpack").CodeGenerationResults["get"]>[1];
 
 /**
  * ENFORCED ENTRY MODULE RESTRICTIONS
