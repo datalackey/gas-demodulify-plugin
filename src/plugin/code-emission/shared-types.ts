@@ -32,7 +32,7 @@ export type ExportBinding = {
  *
  * Represents the runtime name(s) a module is generated for.
  *
- * Mirrors Webpack's internal RuntimeSpec type.
+ * Mirrors Webpack's internal RuntimeSpec type: WebpackRuntimeSpec
  */
 export type RuntimeSpec = string | Set<string> | undefined;
 
