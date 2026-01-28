@@ -115,9 +115,9 @@ export function assertNoWildcardReexports(
 
             const exportsInfo = compilation.moduleGraph.getExportsInfo(module);
             const other = exportsInfo.otherExportsInfo;
-
             if (other !== undefined && other.provided === true) {
-                throw unsupportedWildcardError(`Module: ${resource ?? "<synthetic>"}`);
+                const resourceLabel = typeof resource === "string" ? resource : "<synthetic>";
+                throw unsupportedWildcardError(`Module: ${resourceLabel}`);
             }
         }
     }
