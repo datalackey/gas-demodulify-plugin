@@ -22,12 +22,14 @@ module.exports = {
         rules: [
             {
                 test: /\.ts$/,
-                use: {
-                    loader: "ts-loader",
-                    options: {
-                        configFile: "tsconfig.json",
+                use: [
+                    {
+                        loader: "ts-loader",
+                        options: {
+                            transpileOnly: true,
+                        },
                     },
-                },
+                ],
             },
         ],
     },

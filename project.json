@@ -13,12 +13,16 @@
             "command": "npm run docs:toc:check"
         },
         "compile": {
-            "command": "npm run compile",
+            "command": "tsc -p tsconfig.build.json",
             "outputs": ["{projectRoot}/dist"]
         },
         "test": {
-            "dependsOn": ["compile"],
-            "command": "npm run test"
+            "executor": "@nx/jest:jest",
+            "outputs": ["{projectRoot}/coverage"],
+            "options": {
+                "jestConfig": "{projectRoot}/jest.config.cjs",
+                "passWithNoTests": true
+            }
         },
         "package": {
             "dependsOn": ["compile"],

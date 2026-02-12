@@ -17,8 +17,14 @@ module.exports = {
         rules: [
             {
                 test: /\.ts$/,
-                use: "ts-loader",
-                exclude: /node_modules/,
+                use: [
+                    {
+                        loader: "ts-loader",
+                        options: {
+                            transpileOnly: true,
+                        },
+                    },
+                ],
             },
         ],
     },

@@ -14,6 +14,22 @@ module.exports = {
         filename: "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME",
     },
 
+    module: {
+        rules: [
+            {
+                test: /\.ts$/,
+                use: [
+                    {
+                        loader: "ts-loader",
+                        options: {
+                            transpileOnly: true,
+                        },
+                    },
+                ],
+            },
+        ],
+    },
+
     plugins: [
         new GASDemodulifyPlugin({
             namespaceRoot: "MYADDON",

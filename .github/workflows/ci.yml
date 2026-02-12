@@ -31,4 +31,4 @@ jobs:
               run: npx nx run gas-demodulify:test
 
             - name: package:release
-              run: npx nx run gas-demodulify:release
+              run: nnpx nx run gas-demodulify:releasepx nx run gas-demodulify:release --skip-nx-cache

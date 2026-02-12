@@ -1,11 +1,14 @@
 {
     "compilerOptions": {
-        "target": "ES2019",
-        "module": "commonjs",
-        "declaration": true,
-        "outDir": "dist",
+        "target": "ES2022",
+        "module": "CommonJS",
+        "lib": ["ES2022"],
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
         "strict": true,
-        "esModuleInterop": true
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "skipLibCheck": true
     },
-    "include": ["src/**/*.ts"]
+    "include": ["src", "test"]
 }
