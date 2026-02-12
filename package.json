@@ -1,6 +1,6 @@
 {
   "name": "@datalackey/gas-demodulify-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Webpack plugin: emits GAS-safe JavaScript with modules flattened & mapped to hierarchical namespaces",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
