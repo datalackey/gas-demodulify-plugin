@@ -1,0 +1,15 @@
+{
+    "name": "gas-demodulify",
+    "sourceRoot": "src",
+    "projectType": "library",
+    "targets": {
+        "compile": {
+            "command": "npm run compile",
+            "outputs": ["{projectRoot}/dist"]
+        },
+        "test": {
+            "dependsOn": ["compile"],
+            "command": "npm run test"
+        }
+    }
+}

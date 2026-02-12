@@ -27,5 +27,8 @@ jobs:
             - name: Install
               run: npm ci
 
+            - name: Test (compile enforced via Nx)
+              run: npx nx run gas-demodulify:test
+
             - name: package:release
               run: npm run package:release
