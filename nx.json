@@ -6,6 +6,12 @@
         },
         "test": {
             "cache": true
+        },
+        "format": {
+            "cache": true
+        },
+        "lint": {
+            "cache": true
         }
     }
 }
