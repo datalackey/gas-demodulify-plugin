@@ -31,4 +31,4 @@ jobs:
               run: npx nx run gas-demodulify:test
 
             - name: package:release
-              run: npm run package:release
+              run: npx nx run gas-demodulify:release

@@ -3,6 +3,15 @@
     "sourceRoot": "src",
     "projectType": "library",
     "targets": {
+        "lint": {
+            "command": "npm run lint"
+        },
+        "format:check": {
+            "command": "npm run format:check"
+        },
+        "toc:check": {
+            "command": "npm run docs:toc:check"
+        },
         "compile": {
             "command": "npm run compile",
             "outputs": ["{projectRoot}/dist"]
@@ -10,6 +19,16 @@
         "test": {
             "dependsOn": ["compile"],
             "command": "npm run test"
+        },
+        "package": {
+            "dependsOn": ["compile"],
+            "command": "node scripts/build-plugin-package.js"
+        },
+        "build": {
+            "dependsOn": ["lint", "format:check", "toc:check", "test"]
+        },
+        "release": {
+            "dependsOn": ["build", "package"]
         }
     }
 }

@@ -18,7 +18,7 @@
         "docs:toc:update": "update-markdown-toc --recursive .",
         "docs:toc:check": "update-markdown-toc --check --recursive .",
         "build": "rm -rf dist && npm run lint && npm run format && npm run docs:toc:update && npm run compile && npm run test",
-        "package:release": "node scripts/release.js"
+        "package:release": "nx run gas-demodulify:release"
     },
     "peerDependencies": {
         "webpack": "^5.0.0"
