@@ -21,4 +21,4 @@ fi
 echo "Node.js version OK: $NODE_VERSION_RAW"
 
 npm install
-npm run package:release
+npx nx run gas-demodulify-plugin:release

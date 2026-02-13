@@ -2,33 +2,45 @@
 
 <!-- TOC:START -->
 - [Guidance For Plugin Maintainers](#guidance-for-plugin-maintainers)
+  - [Overview](#overview)
+  - [First-time setup](#first-time-setup)
   - [Development Stack](#development-stack)
-    - [Overview](#overview)
+    - [Overview](#overview-1)
     - [Inventory of Technologies](#inventory-of-technologies)
       - [Task Orchestration and Build Caching via NX](#task-orchestration-and-build-caching-via-nx)
       - [Continuous Integration (CI) Via Github Actions](#continuous-integration-ci-via-github-actions)
+      - [TypeScript](#typescript)
       - [ESLint](#eslint)
       - [Prettier](#prettier)
       - [Unit Testing via Jest](#unit-testing-via-jest)
+      - [Webpack (Test Fixtures)](#webpack-test-fixtures)
     - [IDE Setup (Intellij IDEA)](#ide-setup-intellij-idea)
       - [Incremental Lint'ing](#incremental-linting)
       - [Incremental Code Formatting](#incremental-code-formatting)
-  - [First-time setup](#first-time-setup)
-  - [Running Tests and Samples](#running-tests-and-samples)
-    - [Tests Run Within IDEs May Not Use Latest Edited Source](#tests-run-within-ides-may-not-use-latest-edited-source)
-    - [Commands to ensure tests use the latest source](#commands-to-ensure-tests-use-the-latest-source)
-- [install deps (only needed once or when package.json changed)](#install-deps-only-needed-once-or-when-packagejson-changed)
-- [Packate plugin into dist/](#packate-plugin-into-dist)
-    - [Test Troubleshooting Tips](#test-troubleshooting-tips)
+  - [Running Samples](#running-samples)
   - [Formatting](#formatting)
-  - [Contributing a PR](#contributing-a-pr)
+  - [Contributing a PR -- OBSOLETE](#contributing-a-pr----obsolete)
 <!-- TOC:END -->
 
-
+## Overview
 
 This page is targeted to developers interested in contributing (features, docs, examples, tests, fixes, etc.) to the
 plugin itself, rather than plugin users. All development to date has been done on NiXos Linux (so
 MacOS or Windows developers may need to wing it a bit.)
+
+## First-time setup
+
+Run the provided development setup script to install dependencies, compile sources, run
+the test-suite, and package the plugin for release.
+
+```sh
+git clone git@github.com:buildlackey/gas-demodulify-plugin.git
+cd gas-demodulify-plugin
+bash ./scripts/dev_setup.sh
+```
+
+This will leave the compiled artifacts in `dist/` and produce the packaged plugin under `dist/plugin`
+so samples and IDE runners will use the latest compiled code.
 
 ## Development Stack
 
@@ -41,12 +53,12 @@ implement, build, package and release the plug-in.
 [NX](https://nx.dev/docs/getting-started)
 is used to orchestrate build tasks, with a key assumption being that
 Lint'ing and type checking will be done within your IDE as you write and test code.
-So the NX build [configuration](./project.json)
+So the NX build [configuration](../project.json)
 will check that Lint rules and type checks are not violated (and will fail builds upon
 encountering any related errors). However, we shave off some run time by _not_ explicitly
 running Lint or type checks as part of the automated build steps. The assumption is that developers will
 configure their IDEs as shown [below](#ide-setup-intellij-idea)
-to perform linting and type checking incrementally as files are viewed and edited.
+to perform Lint'ing and type checking incrementally, as files are viewed and edited.
 This saves time when running the automated build steps. Another huge time
 saver is the ability of NX to cache the results of the various phases of the build
 and avoid re-running any step whose source inputs have not changed.
@@ -71,22 +83,34 @@ the CI build invokes more or less the following steps:
 #### Continuous Integration (CI) Via Github Actions
 
 The Github repo that contains this plugin's source code has been configured to run
-through the CI workflow defined [here](.github/workflows/ci.yml), on any push to main.
-The results of the CI build are viewable [here]()
+through the CI workflow defined [here](../.github/workflows/ci.yml), on any push to main.
+The results of the CI build are viewable [here](https://github.com/datalackey/gas-demodulify-plugin/actions)
+
+#### TypeScript
+
+The plugin is authored in [TypeScript](https://www.typescriptlang.org/).  
+Two configurations are used:
+
+- [`tsconfig.build.json`](../tsconfig.build.json) — used for emitting compiled output into `dist/`
+- [`tsconfig.typecheck.json`](../tsconfig.typecheck.json) — used in CI to perform full
+  type-checking without emitting code
+
+Type-checking is expected to be performed incrementally within the IDE during development.
+The CI pipeline enforces correctness by running the `typecheck` target explicitly.
 
 #### ESLint
 
 [ESLint](https://eslint.org/) statically analyzes your code and nags you when it finds
-'code smells' such as 'unsafe any' references, or unused variables. See the config file: [here](./.eslintrc.json).
+'code smells' such as 'unsafe any' references, or unused variables. See the config file: [here](../.eslintrc.json).
 
 #### Prettier
 
 [Prettier](https://prettier.io/) automatically formats your code to enforce a consistent style
-(indentation, spacing, quotes, etc.) You will not like the coding standards ! I don't like them either.
-But they save an immense amount of time during code reviews as we we avoid the
+(indentation, spacing, quotes, etc.) You will not like the coding standards ! And we don't like them either.
+But they save an immense amount of time during code reviews as they help us avoid the
 cognitive overhead of whitespace and indent based diffs. (Not to mention time save debatting formatting style!)
 
-See the config file: [here](./.prettierrc.json).
+See the config file: [here](../.prettierrc.json).
 
 #### Unit Testing via Jest
 
@@ -108,13 +132,14 @@ We have two categories of tests:
 - **Feature / Unit Tests**  
   These target specific internal behaviors (e.g., logging, configuration validators, etc.)
   They are isolated and run directly against the source code without requiring a packaged artifact.  
-  See: [`test/`](../test/)
+  See: [`test/`](../test/targeted-feature-tests)
+-
 
-All tests can be executed via Nx:
+#### Webpack (Test Fixtures)
 
-```bash
-npx nx run gas-demodulify-plugin:test
-```
+Most e2e tests use minimal [Webpack](https://webpack.js.org/) configurations to simulate real-world bundling
+scenarios.  
+For example:  [this one](../test/end-to-end-transform-to-gas-tests/fixtures/default-export-gas/webpack.config.js).
 
 ### IDE Setup (Intellij IDEA)
 
@@ -137,60 +162,16 @@ $## Build Targets
 
 Here is [the diagram](https://github.com/datalackey/gas-demodulify-plugin/blob/main/docs/nx-build-graph.html)
 
-## First-time setup
+## Running Samples
 
-Run the provided development setup script to install dependencies, compile sources, run
-the test-suite, and package the plugin for release.
+Similarly to e2e tests, running code from the `samples/` projects will pick up the generated plugin
+package under `dist/plugin` rather than running from the TypeScript source you are editing under `src/`.
 
-```sh
-git clone git@github.com:buildlackey/gas-demodulify-plugin.git
-cd gas-demodulify-plugin
-bash ./scripts/dev_setup.sh
-```
-
-This will leave the compiled artifacts in `dist/` and produce the packaged plugin under `dist/plugin`
-so samples and IDE runners will use the latest compiled code.
-
-## Running Tests and Samples
-
-### Tests Run Within IDEs May Not Use Latest Edited Source
-
-Some workflows (and the `samples/` projects) require the packaged plugin
-from `dist/plugin` (for example `samples/with-source-maps` references `file:../../dist/plugin`).
-When you run tests from an IDE or when a sample project
 requires the plugin from `dist/plugin`, it will pick up the generated package under `dist/plugin` rather than
 the TypeScript source you are editing under `src/`.
 
 That means: if you change source files in `src/` and then run tests from your IDE without
 rebuilding the packaged plugin, the tests may still exercise the old compiled code under `dist/plugin`.
-
-We have a guard in place which warns you if the `dist/plugin` package is out-of-date with respect to the `src/` files.
-It will trigger when running tests from the IDE. You will see: "Error: Stale dist detected."
-However, no such guard exists for the samples yet.
-
-TODO - obsolete here -- update the doc
-
-### Commands to ensure tests use the latest source
-
-Before running the samples or tests from an IDE
-make sure the compiled output and packaged plugin are up-to-date. The simplest sequence is:
-
-```sh
-# install deps (only needed once or when package.json changed)
-npm install
-
-# Packate plugin into dist/
-npm run package:release
-
-```
-
-### Test Troubleshooting Tips
-
-- If tests run in your IDE appear to be 'stale' (not reflecting recent edits),
-  re-run `npm run compile` before re-running tests from the IDE. Future documentation updates will
-  describe how this can be automated via run configurations in Intellij IDEA.
-- If you tweak the plugin and want to see how it works with a sample project, make sure
-  you rebuilt the properly packaged plugin via the `package:release` build target.
 
 ## Formatting
 
@@ -200,7 +181,7 @@ Code is formatted as part of the release process, so you should not depend on an
 
 `npm run package:release` will fail if formatting is not compliant.
 
-## Contributing a PR
+## Contributing a PR -- OBSOLETE
 
 CI runs `npm run package:release` on all supported Node LTS versions.
 PRs must pass on all matrix entries before merge.
