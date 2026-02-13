@@ -16,7 +16,7 @@
       "outputs": []
     },
     "toc:check": {
-      "command": "npm run docs:toc:check"
+      "command": "npm run docs:toc:check || (echo 'TOC check failed. Run: npx nx run gas-demodulify-plugin:toc:update locally.' && exit 1)"
     },
     "autogen:docs": {
       "command": "nx graph --file=docs/nx-build-graph.html",
