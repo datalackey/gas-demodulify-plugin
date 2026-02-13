@@ -9,17 +9,8 @@
         "dist"
     ],
     "scripts": {
-        "lint": "eslint 'src/**/*.ts'",
-        "typecheck": "tsc --noEmit",
-        "check": "npm run lint && npm run typecheck",
-        "compile": "tsc -p tsconfig.build.json",
-        "format": "prettier --write . --log-level warn",
         "format:check": "prettier --check .",
-        "test": "LOGLEVEL=silent jest",
-        "docs:toc:update": "update-markdown-toc --recursive .",
-        "docs:toc:check": "update-markdown-toc --check --recursive . || (echo 'TOC check failed. Run locally: npm run  docs:toc:update' && exit 1)",
-        "build": "rm -rf dist && npm run lint && npm run format && npm run docs:toc:update && npm run compile && npm run test",
-        "package:release": "nx run gas-demodulify:release"
+        "test": "LOGLEVEL=silent jest"
     },
     "peerDependencies": {
         "webpack": "^5.0.0"

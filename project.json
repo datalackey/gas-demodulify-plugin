@@ -17,8 +17,13 @@
             "outputs": [],
             "cache": true
         },
+        "format:check": {
+            "command": "prettier --check . || (echo 'Code style check failed. Run locally: npx nx run gas-demodulify-plugin:format locally.' && exit 1)",
+            "outputs": [],
+            "cache": true
+        },
         "toc:check": {
-            "command": "update-markdown-toc --check --recursive . || (echo 'TOC check failed. Run: npm run docs:toc:update locally.' && exit 1)",
+            "command": "update-markdown-toc --check --recursive . || (echo 'TOC check failed. Run locally: npm run docs:toc:update .' && exit 1)",
             "outputs": [],
             "cache": true
         },
@@ -28,7 +33,7 @@
             "cache": false
         },
         "typecheck": {
-            "command": "tsc -p tsconfig.typecheck.json || (echo 'Typecheck failed. Run: npx nx run gas-demodulify-plugin:typecheck locally.' && exit 1)",
+            "command": "tsc -p tsconfig.typecheck.json || (echo 'Typecheck failed. Run locally: npx nx run gas-demodulify-plugin:typecheck .' && exit 1)",
             "outputs": [],
             "cache": true
         },
@@ -49,7 +54,7 @@
             }
         },
         "build": {
-            "dependsOn": ["lint", "format", "toc:check", "test"]
+            "dependsOn": ["lint", "format:check", "toc:check", "test"]
         },
         "package": {
             "dependsOn": ["build"],
