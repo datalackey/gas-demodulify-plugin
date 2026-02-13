@@ -43,9 +43,3 @@
 import GASDemodulifyPlugin = require("./plugin/GASDemodulifyPlugin");
 export = GASDemodulifyPlugin;
 
-
-function add(a: number, b: number): number {
-    return a + b;
-}
-
-add("1", 2);   // <-- type error, but valid JS
