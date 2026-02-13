@@ -10,6 +10,7 @@
       - [Task Orchestration and Build Caching via NX](#task-orchestration-and-build-caching-via-nx)
       - [Continuous Integration (CI) Via Github Actions](#continuous-integration-ci-via-github-actions)
       - [TypeScript](#typescript)
+      - [Node.js](#nodejs)
       - [ESLint](#eslint)
       - [Prettier](#prettier)
       - [Unit Testing via Jest](#unit-testing-via-jest)
@@ -73,12 +74,12 @@ the CI build invokes more or less the following steps:
 
     gas-demodulify-plugin:release
     └─ gas-demodulify-plugin:package
-    └─ gas-demodulify-plugin:build
-    ├─ gas-demodulify-plugin:lint
-    ├─ gas-demodulify-plugin:format
-    ├─ gas-demodulify-plugin:toc:check
-    └─ gas-demodulify-plugin:test
-    └─ gas-demodulify-plugin:compile
+            └─ gas-demodulify-plugin:build
+            ├─ gas-demodulify-plugin:lint
+            ├─ gas-demodulify-plugin:format
+            ├─ gas-demodulify-plugin:toc:check
+            └─ gas-demodulify-plugin:test
+                └─ gas-demodulify-plugin:compile
 
 #### Continuous Integration (CI) Via Github Actions
 
@@ -97,6 +98,12 @@ Two configurations are used:
 
 Type-checking is expected to be performed incrementally within the IDE during development.
 The CI pipeline enforces correctness by running the `typecheck` target explicitly.
+
+#### Node.js
+
+Development and CI are performed against active LTS versions of Node.js.  
+The CI matrix defines the supported versions explicitly (see the [CI workflow file](../.github/workflows/ci.yml)).
+Contributors should ensure their local Node version aligns with one of the supported LTS versions.
 
 #### ESLint
 
