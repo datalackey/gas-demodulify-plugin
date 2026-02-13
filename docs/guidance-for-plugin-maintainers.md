@@ -20,17 +20,17 @@
 <!-- TOC:END -->
 
 
-This section is targeted to developers interested in contributing (features, docs, tests, fixes, etc.) to the
-plugin itself, rather than plugin users. So far all development has been done by on nixos Linux. So
+This page is targeted to developers interested in contributing (features, docs, examples, tests, fixes, etc.) to the
+plugin itself, rather than plugin users. So far all development has been done by on NiXos Linux. So
 MacOS or Windows developers may need to wing it a bit.
 
 ## Development Stack & Tooling
 
+### Overview
+
 This section is intended for contributors and maintainers seeking to
 understand the technologies used to
 implement, build, package and release the plug-in.
-
-### Overview
 
 [NX](https://nx.dev/docs/getting-started)
 is used to orchestrate build tasks, with a key assumption being that
@@ -49,6 +49,13 @@ The next section provides a brief overview of NX, and other technologies in our
 stack with a brief description of why those technologies were chosen.
 
 ### IDE Setup (Intellij IDEA)
+
+#### Incremental Lint'ing
+
+To configure IDEA to run lint checks incrementally as you edit files, bring up the
+page [below](./images/lint.png) in the Settings
+Dialog and select 'Automatic ESLint configuration' and 'Run eslint --fix on save'.
+This will run lint checks and auto-fix any fixable issues whenever you save a file
 
 ## Build Targets
 
