@@ -1,65 +1,52 @@
 {
-  "name": "gas-demodulify",
-  "sourceRoot": "src",
-  "projectType": "library",
-  "targets": {
-    "clean": {
-      "command": "rm -rf dist",
-      "outputs": []
-    },
-    "lint": {
-      "command": "npm run lint",
-      "outputs": []
-    },
-    "format": {
-      "command": "npm run format",
-      "outputs": []
-    },
-    "toc:check": {
-      "command": "npm run docs:toc:check"
-    },
-    "compile": {
-      "command": "tsc -p tsconfig.build.json",
-      "outputs": [
-        "{projectRoot}/dist"
-      ]
-    },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "dependsOn": [
-        "compile"
-      ],
-      "outputs": [
-        "{projectRoot}/coverage"
-      ],
-      "options": {
-        "jestConfig": "{projectRoot}/jest.config.cjs",
-        "passWithNoTests": true,
-        "silent": true,
-        "verbose": false
-      }
-    },
-    "build": {
-      "dependsOn": [
-        "lint",
-        "format",
-        "toc:check",
-        "test"
-      ]
-    },
-    "package": {
-      "dependsOn": [
-        "build"
-      ],
-      "command": "npm pack",
-      "outputs": [
-        "{projectRoot}/*.tgz"
-      ]
-    },
-    "release": {
-      "dependsOn": [
-        "package"
-      ]
+    "name": "gas-demodulify",
+    "sourceRoot": "src",
+    "projectType": "library",
+    "targets": {
+        "clean": {
+            "command": "rm -rf dist",
+            "outputs": []
+        },
+        "lint": {
+            "command": "npm run lint",
+            "outputs": []
+        },
+        "format": {
+            "command": "npm run format",
+            "outputs": []
+        },
+        "toc:check": {
+            "command": "npm run docs:toc:check"
+        },
+        "typecheck": {
+            "command": "tsc -p tsconfig.typecheck.json || (echo 'Typecheck failed. Run: npx nx run gas-demodulify:typecheck locally.' && exit 1)",
+            "outputs": []
+        },
+        "compile": {
+            "command": "tsc -p tsconfig.build.json",
+            "outputs": ["{projectRoot}/dist"]
+        },
+        "test": {
+            "executor": "@nx/jest:jest",
+            "dependsOn": ["compile"],
+            "outputs": ["{projectRoot}/coverage"],
+            "options": {
+                "jestConfig": "{projectRoot}/jest.config.cjs",
+                "passWithNoTests": true,
+                "silent": true,
+                "verbose": false
+            }
+        },
+        "build": {
+            "dependsOn": ["lint", "format", "toc:check", "test"]
+        },
+        "package": {
+            "dependsOn": ["build"],
+            "command": "npm pack",
+            "outputs": ["{projectRoot}/*.tgz"]
+        },
+        "release": {
+            "dependsOn": ["package"]
+        }
     }
-  }
 }

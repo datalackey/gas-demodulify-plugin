@@ -18,11 +18,10 @@ This section is targeted to developers interested in contributing (features, doc
 plugin itself, rather than plugin users. So far all development has been done by on nixos Linux. So
 MacOS or Windows developers may need to wing it a bit.
 
-
 ## First-time setup
 
 Run the provided development setup script to install dependencies, compile sources, run
-the test-suite, and package the plugin for release. 
+the test-suite, and package the plugin for release.
 
 ```sh
 git clone git@github.com:buildlackey/gas-demodulify-plugin.git
@@ -32,7 +31,6 @@ bash ./scripts/dev_setup.sh
 
 This will leave the compiled artifacts in `dist/` and produce the packaged plugin under `dist/plugin`
 so samples and IDE runners will use the latest compiled code.
-
 
 ## Running Tests and Samples
 
@@ -48,12 +46,14 @@ That means: if you change source files in `src/` and then run tests from your ID
 rebuilding the packaged plugin, the tests may still exercise the old compiled code under `dist/plugin`.
 
 We have a guard in place which warns you if the `dist/plugin` package is out-of-date with respect to the `src/` files.
-It will trigger when running tests from the IDE.  You will see: "Error: Stale dist detected."
+It will trigger when running tests from the IDE. You will see: "Error: Stale dist detected."
 However, no such guard exists for the samples yet.
+
+TODO - obsolete here -- update the doc
 
 ### Commands to ensure tests use the latest source
 
-Before running the samples or tests from an IDE 
+Before running the samples or tests from an IDE
 make sure the compiled output and packaged plugin are up-to-date. The simplest sequence is:
 
 ```sh
@@ -65,16 +65,13 @@ npm run package:release
 
 ```
 
-
 ### Test Troubleshooting Tips
 
 - If tests run in your IDE appear to be 'stale' (not reflecting recent edits),
-  re-run `npm run compile` before re-running tests from the IDE. Future documentation updates will 
+  re-run `npm run compile` before re-running tests from the IDE. Future documentation updates will
   describe how this can be automated via run configurations in Intellij IDEA.
-- If you tweak the plugin and want to see how it works with a sample project, make sure 
+- If you tweak the plugin and want to see how it works with a sample project, make sure
   you rebuilt the properly packaged plugin via the `package:release` build target.
-
-
 
 ## Formatting
 
@@ -84,8 +81,7 @@ Code is formatted as part of the release process, so you should not depend on an
 
 `npm run package:release` will fail if formatting is not compliant.
 
-
-## Contributing a PR 
+## Contributing a PR
 
 CI runs `npm run package:release` on all supported Node LTS versions.
 PRs must pass on all matrix entries before merge.

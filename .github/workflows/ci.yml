@@ -27,7 +27,10 @@ jobs:
             - name: Install
               run: npm ci
 
-            - name: Test (compile enforced via Nx)
+            - name: Typecheck
+              run: npx nx run gas-demodulify:typecheck
+
+            - name: Test
               run: npx nx run gas-demodulify:test
 
             - name: package:release
