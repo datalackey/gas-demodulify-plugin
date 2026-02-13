@@ -1,22 +1,21 @@
 # Guidance For Plugin Maintainers
 
 <!-- TOC:START -->
-
 - [Guidance For Plugin Maintainers](#guidance-for-plugin-maintainers)
-    - [Development Stack & Tooling](#development-stack--tooling)
-        - [Overview](#overview)
-        - [IDE Setup (Intellij IDEA)](#ide-setup-intellij-idea)
-    - [Build Targets](#build-targets)
-    - [First-time setup](#first-time-setup)
-    - [Running Tests and Samples](#running-tests-and-samples)
-        - [Tests Run Within IDEs May Not Use Latest Edited Source](#tests-run-within-ides-may-not-use-latest-edited-source)
-        - [Commands to ensure tests use the latest source](#commands-to-ensure-tests-use-the-latest-source)
+  - [Development Stack & Tooling](#development-stack--tooling)
+    - [Overview](#overview)
+    - [IDE Setup (Intellij IDEA)](#ide-setup-intellij-idea)
+      - [Incremental Lint'ing](#incremental-linting)
+  - [Build Targets](#build-targets)
+  - [First-time setup](#first-time-setup)
+  - [Running Tests and Samples](#running-tests-and-samples)
+    - [Tests Run Within IDEs May Not Use Latest Edited Source](#tests-run-within-ides-may-not-use-latest-edited-source)
+    - [Commands to ensure tests use the latest source](#commands-to-ensure-tests-use-the-latest-source)
 - [install deps (only needed once or when package.json changed)](#install-deps-only-needed-once-or-when-packagejson-changed)
 - [Packate plugin into dist/](#packate-plugin-into-dist)
     - [Test Troubleshooting Tips](#test-troubleshooting-tips)
-    - [Formatting](#formatting)
-    - [Contributing a PR](#contributing-a-pr)
-
+  - [Formatting](#formatting)
+  - [Contributing a PR](#contributing-a-pr)
 <!-- TOC:END -->
 
 
