@@ -43,4 +43,4 @@
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 import GASDemodulifyPlugin = require("./plugin/GASDemodulifyPlugin");
-  export = GASDemodulifyPlugin;
+export = GASDemodulifyPlugin;
