@@ -1,22 +1,28 @@
 # Guidance For Plugin Maintainers
 
 <!-- TOC:START -->
+
 - [Guidance For Plugin Maintainers](#guidance-for-plugin-maintainers)
-  - [First-time setup](#first-time-setup)
-  - [Running Tests and Samples](#running-tests-and-samples)
-    - [Tests Run Within IDEs May Not Use Latest Edited Source](#tests-run-within-ides-may-not-use-latest-edited-source)
-    - [Commands to ensure tests use the latest source](#commands-to-ensure-tests-use-the-latest-source)
+    - [First-time setup](#first-time-setup)
+    - [Running Tests and Samples](#running-tests-and-samples)
+        - [Tests Run Within IDEs May Not Use Latest Edited Source](#tests-run-within-ides-may-not-use-latest-edited-source)
+        - [Commands to ensure tests use the latest source](#commands-to-ensure-tests-use-the-latest-source)
 - [install deps (only needed once or when package.json changed)](#install-deps-only-needed-once-or-when-packagejson-changed)
 - [Packate plugin into dist/](#packate-plugin-into-dist)
     - [Test Troubleshooting Tips](#test-troubleshooting-tips)
-  - [Formatting](#formatting)
-  - [Contributing a PR](#contributing-a-pr)
+    - [Formatting](#formatting)
+    - [Contributing a PR](#contributing-a-pr)
+
 <!-- TOC:END -->
 
 
 This section is targeted to developers interested in contributing (features, docs, tests, fixes, etc.) to the
 plugin itself, rather than plugin users. So far all development has been done by on nixos Linux. So
 MacOS or Windows developers may need to wing it a bit.
+
+## Build Targets
+
+See the workspace project graph: [Nx build graph](nx-build-graph.html).
 
 ## First-time setup
 

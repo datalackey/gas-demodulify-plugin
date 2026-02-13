@@ -11,13 +11,15 @@
  *      - `tsconfig.json` specifies `"module": "commonjs"`,
  *        which determines the emitted JavaScript semantics
  *        (`module.exports`, `require()`).
+ *      - This is what we want, because we distribute our plugin not as TypeScript source but as compiled JavaScript,
+ *        and we want that JavaScript to be CommonJS for maximum compatibility with Webpack users.
  *
  *   2) Package entrypoint declaration:
  *      - `package.json` exposes `dist/index.js` via the `main` field,
  *        defining how Node and bundlers load the package.
  *
  *   3) Node module interpretation rules:
- *      - The absence of `"type": "module"` in `package.json` causes Node
+ *      - The absence of `"type": "module"` in root folder `package.json` causes Node
  *        to interpret `.js` files as CommonJS by default.
  *
  *   Together, these establish a CommonJS contract for consumers.
@@ -36,10 +38,9 @@
  * - `require()` usage in this file is deliberate and confined to this
  *   package boundary.
  * - ESLint rules discouraging `require()` are intended for application code,
- *   not for package entrypoint shims.
+ *   not for package entrypoint shims (hence the disable directive).
  */
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 import GASDemodulifyPlugin = require("./plugin/GASDemodulifyPlugin");
 export = GASDemodulifyPlugin;
-
