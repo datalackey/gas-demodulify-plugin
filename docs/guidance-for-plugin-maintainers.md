@@ -18,8 +18,8 @@
     - [IDE Setup (Intellij IDEA)](#ide-setup-intellij-idea)
       - [Incremental Lint'ing](#incremental-linting)
       - [Incremental Code Formatting](#incremental-code-formatting)
+  - [Build Targets](#build-targets)
   - [Running Samples](#running-samples)
-  - [Formatting](#formatting)
   - [Contributing a PR -- OBSOLETE](#contributing-a-pr----obsolete)
 <!-- TOC:END -->
 
@@ -108,14 +108,14 @@ Contributors should ensure their local Node version aligns with one of the suppo
 #### ESLint
 
 [ESLint](https://eslint.org/) statically analyzes your code and nags you when it finds
-'code smells' such as 'unsafe any' references, or unused variables. See the config file: [here](../.eslintrc.json).
+'code smells' such as 'unsafe any' references, or unused variables. See the config file: [here](../.eslintrc.cjs).
 
 #### Prettier
 
 [Prettier](https://prettier.io/) automatically formats your code to enforce a consistent style
 (indentation, spacing, quotes, etc.) You will not like the coding standards ! And we don't like them either.
 But they save an immense amount of time during code reviews as they help us avoid the
-cognitive overhead of whitespace and indent based diffs. (Not to mention time save debatting formatting style!)
+cognitive overhead of whitespace and indent based diffs. Remember: any manual formatting you do will be overwritten.
 
 See the config file: [here](../.prettierrc.json).
 
@@ -139,7 +139,7 @@ We have two categories of tests:
 - **Feature / Unit Tests**  
   These target specific internal behaviors (e.g., logging, configuration validators, etc.)
   They are isolated and run directly against the source code without requiring a packaged artifact.  
-  See: [`test/`](../test/targeted-feature-tests)
+  See: [`test/targeted-feature-tests)`](../test/targeted-feature-tests)
 -
 
 #### Webpack (Test Fixtures)
@@ -165,9 +165,9 @@ The screenshot below shows how to configure IDEA to run Prettier formatting on s
 
 <img src="./images/lint.png" alt="ESLint settings" style="width:50%;" />
 
-$## Build Targets
+## Build Targets
 
-Here is [the diagram](https://github.com/datalackey/gas-demodulify-plugin/blob/main/docs/nx-build-graph.html)
+Here is the [build graph](https://datalackey.github.io/gas-demodulify-plugin/nx-build-graph.html).
 
 ## Running Samples
 
@@ -179,14 +179,6 @@ the TypeScript source you are editing under `src/`.
 
 That means: if you change source files in `src/` and then run tests from your IDE without
 rebuilding the packaged plugin, the tests may still exercise the old compiled code under `dist/plugin`.
-
-## Formatting
-
-Code is formatted as part of the release process, so you should not depend on any manual formatting you do in your IDE.
-
-`npm run build` will reformat your code.
-
-`npm run package:release` will fail if formatting is not compliant.
 
 ## Contributing a PR -- OBSOLETE
 
