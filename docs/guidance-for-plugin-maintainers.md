@@ -2,6 +2,8 @@
 
 <!-- TOC:START -->
 - [Guidance For Plugin Maintainers](#guidance-for-plugin-maintainers)
+  - [Development Stack & Tooling](#development-stack--tooling)
+    - [Overview](#overview)
   - [Build Targets](#build-targets)
   - [First-time setup](#first-time-setup)
   - [Running Tests and Samples](#running-tests-and-samples)
@@ -18,6 +20,31 @@
 This section is targeted to developers interested in contributing (features, docs, tests, fixes, etc.) to the
 plugin itself, rather than plugin users. So far all development has been done by on nixos Linux. So
 MacOS or Windows developers may need to wing it a bit.
+
+## Development Stack & Tooling
+
+This section is intended for contributors and maintainers seeking to
+understand the technologies used to
+implement, build, package and release the plug-in.
+
+### Overview
+
+[NX](https://nx.dev/docs/getting-started)
+is used to orchestrate build tasks, with a key assumption being that
+Linting and type checking will be done within your IDE as you write and test code.
+So the NX build [configuration](./project.json)
+will check that Lint rules and type checks are not violated (and will fail builds upon
+encountering any related errors),
+but we will _not_ explicitly run Lint or type checks
+as part of the automated build steps. The assumption is that developers will
+configure their IDEs as shown in the section
+to perform linting and type checking incrementally as files are viewed and edited.
+This saves time when running the automated build steps. Another huge time
+saver is the ability of NX to cache the results of the various phases of the build
+and avoid re-running any step whose source inputs have not changed.
+
+The next section provides a brief overview of NX, and other technologies in our
+stack with a brief description of why those technologies were chosen.
 
 ## Build Targets
 
