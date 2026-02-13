@@ -5,18 +5,19 @@
  * It intentionally exports exactly one value for Webpack users: the gas-demodulify-plugin plugin constructor.
  *
  * Why this exists:
- * - The package is effectively published as CommonJS due to a combination of factors:
+ * - The package, and this entry point are effectively transpiled
+ *   to CommonJS due to a combination of factors:
  *
- *   1) TypeScript compilation target:
+ *   1) Package entrypoint declaration:
+ *      - `package.json` exposes `dist/index.js` via the `main` field,
+ *        defining how Node and bundlers (like Webpack) load the package.
+ *
+ *   2) TypeScript compilation target:
  *      - `tsconfig.json` specifies `"module": "commonjs"`,
  *        which determines the emitted JavaScript semantics
  *        (`module.exports`, `require()`).
- *      - This is what we want, because we distribute our plugin not as TypeScript source but as compiled JavaScript,
- *        and we want that JavaScript to be CommonJS for maximum compatibility with Webpack users.
- *
- *   2) Package entrypoint declaration:
- *      - `package.json` exposes `dist/index.js` via the `main` field,
- *        defining how Node and bundlers load the package.
+ *      - This is what we want, because we distribute our plugin not as TypeScript source, but JavaScript,
+ *        and we want that JavaScript to use CommonJS modules, not ESM.
  *
  *   3) Node module interpretation rules:
  *      - The absence of `"type": "module"` in root folder `package.json` causes Node

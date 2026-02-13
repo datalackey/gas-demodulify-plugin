@@ -1,19 +1,22 @@
 # Guidance For Plugin Maintainers
 
 <!-- TOC:START -->
+
 - [Guidance For Plugin Maintainers](#guidance-for-plugin-maintainers)
-  - [Development Stack & Tooling](#development-stack--tooling)
-    - [Overview](#overview)
-  - [Build Targets](#build-targets)
-  - [First-time setup](#first-time-setup)
-  - [Running Tests and Samples](#running-tests-and-samples)
-    - [Tests Run Within IDEs May Not Use Latest Edited Source](#tests-run-within-ides-may-not-use-latest-edited-source)
-    - [Commands to ensure tests use the latest source](#commands-to-ensure-tests-use-the-latest-source)
+    - [Development Stack & Tooling](#development-stack--tooling)
+        - [Overview](#overview)
+        - [IDE Setup (Intellij IDEA)](#ide-setup-intellij-idea)
+    - [Build Targets](#build-targets)
+    - [First-time setup](#first-time-setup)
+    - [Running Tests and Samples](#running-tests-and-samples)
+        - [Tests Run Within IDEs May Not Use Latest Edited Source](#tests-run-within-ides-may-not-use-latest-edited-source)
+        - [Commands to ensure tests use the latest source](#commands-to-ensure-tests-use-the-latest-source)
 - [install deps (only needed once or when package.json changed)](#install-deps-only-needed-once-or-when-packagejson-changed)
 - [Packate plugin into dist/](#packate-plugin-into-dist)
     - [Test Troubleshooting Tips](#test-troubleshooting-tips)
-  - [Formatting](#formatting)
-  - [Contributing a PR](#contributing-a-pr)
+    - [Formatting](#formatting)
+    - [Contributing a PR](#contributing-a-pr)
+
 <!-- TOC:END -->
 
 
@@ -31,13 +34,12 @@ implement, build, package and release the plug-in.
 
 [NX](https://nx.dev/docs/getting-started)
 is used to orchestrate build tasks, with a key assumption being that
-Linting and type checking will be done within your IDE as you write and test code.
+Lint'ing and type checking will be done within your IDE as you write and test code.
 So the NX build [configuration](./project.json)
 will check that Lint rules and type checks are not violated (and will fail builds upon
-encountering any related errors),
-but we will _not_ explicitly run Lint or type checks
-as part of the automated build steps. The assumption is that developers will
-configure their IDEs as shown in the section
+encountering any related errors). However, we shave off some run time by _not_ explicitly
+running Lint or type checks as part of the automated build steps. The assumption is that developers will
+configure their IDEs as shown [below](#ide-setup-intellij-idea)
 to perform linting and type checking incrementally as files are viewed and edited.
 This saves time when running the automated build steps. Another huge time
 saver is the ability of NX to cache the results of the various phases of the build
@@ -45,6 +47,8 @@ and avoid re-running any step whose source inputs have not changed.
 
 The next section provides a brief overview of NX, and other technologies in our
 stack with a brief description of why those technologies were chosen.
+
+### IDE Setup (Intellij IDEA)
 
 ## Build Targets
 
