@@ -5,4 +5,5 @@ module.exports = {
     testMatch: ["**/test/**/*.test.ts"],
     moduleFileExtensions: ["ts", "js", "json"],
     roots: ["<rootDir>"],
+    globalSetup: "<rootDir>/scripts/jest-global-setup.js",
 };

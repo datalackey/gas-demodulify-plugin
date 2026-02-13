@@ -1,23 +1,27 @@
 # Guidance For Plugin Maintainers
 
 <!-- TOC:START -->
-
 - [Guidance For Plugin Maintainers](#guidance-for-plugin-maintainers)
-    - [Development Stack & Tooling](#development-stack--tooling)
-        - [Overview](#overview)
-        - [IDE Setup (Intellij IDEA)](#ide-setup-intellij-idea)
-            - [Incremental Lint'ing](#incremental-linting)
-    - [Build Targets](#build-targets)
-    - [First-time setup](#first-time-setup)
-    - [Running Tests and Samples](#running-tests-and-samples)
-        - [Tests Run Within IDEs May Not Use Latest Edited Source](#tests-run-within-ides-may-not-use-latest-edited-source)
-        - [Commands to ensure tests use the latest source](#commands-to-ensure-tests-use-the-latest-source)
+  - [Development Stack](#development-stack)
+    - [Overview](#overview)
+    - [Inventory of Technologies](#inventory-of-technologies)
+      - [Task Orchestration and Build Caching via NX](#task-orchestration-and-build-caching-via-nx)
+      - [Continuous Integration (CI) Via Github Actions](#continuous-integration-ci-via-github-actions)
+      - [ESLint](#eslint)
+      - [Prettier](#prettier)
+      - [Unit Testing via Jest](#unit-testing-via-jest)
+    - [IDE Setup (Intellij IDEA)](#ide-setup-intellij-idea)
+      - [Incremental Lint'ing](#incremental-linting)
+      - [Incremental Code Formatting](#incremental-code-formatting)
+  - [First-time setup](#first-time-setup)
+  - [Running Tests and Samples](#running-tests-and-samples)
+    - [Tests Run Within IDEs May Not Use Latest Edited Source](#tests-run-within-ides-may-not-use-latest-edited-source)
+    - [Commands to ensure tests use the latest source](#commands-to-ensure-tests-use-the-latest-source)
 - [install deps (only needed once or when package.json changed)](#install-deps-only-needed-once-or-when-packagejson-changed)
 - [Packate plugin into dist/](#packate-plugin-into-dist)
     - [Test Troubleshooting Tips](#test-troubleshooting-tips)
-    - [Formatting](#formatting)
-    - [Contributing a PR](#contributing-a-pr)
-
+  - [Formatting](#formatting)
+  - [Contributing a PR](#contributing-a-pr)
 <!-- TOC:END -->
 
 
@@ -26,7 +30,7 @@ This page is targeted to developers interested in contributing (features, docs, 
 plugin itself, rather than plugin users. All development to date has been done on NiXos Linux (so
 MacOS or Windows developers may need to wing it a bit.)
 
-## Development Stack & Tooling
+## Development Stack
 
 ### Overview
 
@@ -47,8 +51,70 @@ This saves time when running the automated build steps. Another huge time
 saver is the ability of NX to cache the results of the various phases of the build
 and avoid re-running any step whose source inputs have not changed.
 
-The next section provides a brief overview of NX, and other technologies in our
-stack with a brief description of why those technologies were chosen.
+### Inventory of Technologies
+
+#### Task Orchestration and Build Caching via NX
+
+The [NX](https://nx.dev/docs/getting-started) configuration file
+which defines the build targets and their dependencies can be found [here](../project.json), and
+the CI build invokes more or less the following steps:
+
+    gas-demodulify-plugin:release
+    └─ gas-demodulify-plugin:package
+    └─ gas-demodulify-plugin:build
+    ├─ gas-demodulify-plugin:lint
+    ├─ gas-demodulify-plugin:format
+    ├─ gas-demodulify-plugin:toc:check
+    └─ gas-demodulify-plugin:test
+    └─ gas-demodulify-plugin:compile
+
+#### Continuous Integration (CI) Via Github Actions
+
+The Github repo that contains this plugin's source code has been configured to run
+through the CI workflow defined [here](.github/workflows/ci.yml), on any push to main.
+The results of the CI build are viewable [here]()
+
+#### ESLint
+
+[ESLint](https://eslint.org/) statically analyzes your code and nags you when it finds
+'code smells' such as 'unsafe any' references, or unused variables. See the config file: [here](./.eslintrc.json).
+
+#### Prettier
+
+[Prettier](https://prettier.io/) automatically formats your code to enforce a consistent style
+(indentation, spacing, quotes, etc.) You will not like the coding standards ! I don't like them either.
+But they save an immense amount of time during code reviews as we we avoid the
+cognitive overhead of whitespace and indent based diffs. (Not to mention time save debatting formatting style!)
+
+See the config file: [here](./.prettierrc.json).
+
+#### Unit Testing via Jest
+
+Tests are written in [Jest](https://jestjs.io/), a JavaScript testing framework that provides
+fast execution, snapshot support, and a rich assertion API.
+
+We have two categories of tests:
+
+- **End-to-End (E2E) Tests**  
+  These validate full transformation flows and integration scenarios (e.g., input → demodulified output).
+  They operate off of Webpack configuration file 'fixtures' and verify real-world behavior across multiple modules.  
+  See: [`test/end-to-end-transform-to-gas-tests/`](../test/end-to-end-transform-to-gas-tests/)
+  These tests require the plugin to be compiled first (via the `compile` target), as they depend on the
+  built plugin rather than raw TypeScript source, and our [Jest config](../jest.config.cjs)
+  ensures that the plugin is up-to-date before running the tests by calling
+  the pre-run [script](../scripts/jest-global-setup.js).
+
+
+- **Feature / Unit Tests**  
+  These target specific internal behaviors (e.g., logging, configuration validators, etc.)
+  They are isolated and run directly against the source code without requiring a packaged artifact.  
+  See: [`test/`](../test/)
+
+All tests can be executed via Nx:
+
+```bash
+npx nx run gas-demodulify-plugin:test
+```
 
 ### IDE Setup (Intellij IDEA)
 
@@ -63,16 +129,13 @@ This will run lint checks and auto-fix any fixable issues whenever you save a fi
 
 #### Incremental Code Formatting
 
-You will not like our coding standards which are based on default [Prettier](https://prettier.io/) formattting rules.
-I don't like them either. But they save an immense amount of time during code reviews as we we avoid the
-cognitive overhead of whitespace and indent based diffs. (Not to mention time save debatting formatting style!)
-That said, the screen shot below shows how to configure IDEA to run Prettier formatting on save:
+The screenshot below shows how to configure IDEA to run Prettier formatting on save:
 
 <img src="./images/lint.png" alt="ESLint settings" style="width:50%;" />
 
-## Build Targets
+$## Build Targets
 
-See the workspace project graph: [Nx build graph](nx-build-graph.html).
+Here is [the diagram](https://github.com/datalackey/gas-demodulify-plugin/blob/main/docs/nx-build-graph.html)
 
 ## First-time setup
 
