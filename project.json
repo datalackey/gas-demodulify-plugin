@@ -30,7 +30,7 @@
       ]
     },
     "typecheck": {
-      "command": "tsc -p tsconfig.typecheck.json || (echo 'Typecheck failed. Run: npx nx run gas-demodulify:typecheck locally.' && exit 1)",
+      "command": "tsc -p tsconfig.typecheck.json || (echo 'Typecheck failed. Run: npx nx run gas-demodulify-plugin:typecheck locally.' && exit 1)",
       "outputs": []
     },
     "compile": {
