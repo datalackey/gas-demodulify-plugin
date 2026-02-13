@@ -23,8 +23,8 @@
 
 
 This page is targeted to developers interested in contributing (features, docs, examples, tests, fixes, etc.) to the
-plugin itself, rather than plugin users. So far all development has been done by on NiXos Linux. So
-MacOS or Windows developers may need to wing it a bit.
+plugin itself, rather than plugin users. All development to date has been done on NiXos Linux (so
+MacOS or Windows developers may need to wing it a bit.)
 
 ## Development Stack & Tooling
 
@@ -60,6 +60,15 @@ page below in the Settings Dialog and select 'Automatic ESLint configuration' an
 <img src="./images/lint.png" alt="ESLint settings" style="width:50%;" />
 
 This will run lint checks and auto-fix any fixable issues whenever you save a file
+
+#### Incremental Code Formatting
+
+You will not like our coding standards which are based on default [Prettier](https://prettier.io/) formattting rules.
+I don't like them either. But they save an immense amount of time during code reviews as we we avoid the
+cognitive overhead of whitespace and indent based diffs. (Not to mention time save debatting formatting style!)
+That said, the screen shot below shows how to configure IDEA to run Prettier formatting on save:
+
+<img src="./images/lint.png" alt="ESLint settings" style="width:50%;" />
 
 ## Build Targets
 
