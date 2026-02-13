@@ -16,7 +16,7 @@
       "outputs": []
     },
     "toc:check": {
-      "command": "npm run docs:toc:check || (echo 'TOC check failed. Run: npx nx run gas-demodulify-plugin:toc:update locally.' && exit 1)"
+      "command": "npm run docs:toc:check "
     },
     "autogen:docs": {
       "command": "nx graph --file=docs/nx-build-graph.html",
@@ -30,7 +30,7 @@
       ]
     },
     "typecheck": {
-      "command": "tsc -p tsconfig.typecheck.json || (echo 'Typecheck failed. Run: npx nx run gas-demodulify-plugin:typecheck locally.' && exit 1)",
+      "command": "tsc -p tsconfig.typecheck.json || (echo 'Typecheck failed. Run locally: npx nx run gas-demodulify-plugin:typecheck ' && exit 1)",
       "outputs": []
     },
     "compile": {
