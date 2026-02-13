@@ -1,22 +1,25 @@
 # Guidance For Plugin Maintainers
 
 <!-- TOC:START -->
+
 - [Guidance For Plugin Maintainers](#guidance-for-plugin-maintainers)
-  - [Development Stack & Tooling](#development-stack--tooling)
-    - [Overview](#overview)
-    - [IDE Setup (Intellij IDEA)](#ide-setup-intellij-idea)
-      - [Incremental Lint'ing](#incremental-linting)
-  - [Build Targets](#build-targets)
-  - [First-time setup](#first-time-setup)
-  - [Running Tests and Samples](#running-tests-and-samples)
-    - [Tests Run Within IDEs May Not Use Latest Edited Source](#tests-run-within-ides-may-not-use-latest-edited-source)
-    - [Commands to ensure tests use the latest source](#commands-to-ensure-tests-use-the-latest-source)
+    - [Development Stack & Tooling](#development-stack--tooling)
+        - [Overview](#overview)
+        - [IDE Setup (Intellij IDEA)](#ide-setup-intellij-idea)
+            - [Incremental Lint'ing](#incremental-linting)
+    - [Build Targets](#build-targets)
+    - [First-time setup](#first-time-setup)
+    - [Running Tests and Samples](#running-tests-and-samples)
+        - [Tests Run Within IDEs May Not Use Latest Edited Source](#tests-run-within-ides-may-not-use-latest-edited-source)
+        - [Commands to ensure tests use the latest source](#commands-to-ensure-tests-use-the-latest-source)
 - [install deps (only needed once or when package.json changed)](#install-deps-only-needed-once-or-when-packagejson-changed)
 - [Packate plugin into dist/](#packate-plugin-into-dist)
     - [Test Troubleshooting Tips](#test-troubleshooting-tips)
-  - [Formatting](#formatting)
-  - [Contributing a PR](#contributing-a-pr)
+    - [Formatting](#formatting)
+    - [Contributing a PR](#contributing-a-pr)
+
 <!-- TOC:END -->
+
 
 
 This page is targeted to developers interested in contributing (features, docs, examples, tests, fixes, etc.) to the
@@ -52,8 +55,10 @@ stack with a brief description of why those technologies were chosen.
 #### Incremental Lint'ing
 
 To configure IDEA to run lint checks incrementally as you edit files, bring up the
-page [below](./images/lint.png) in the Settings
-Dialog and select 'Automatic ESLint configuration' and 'Run eslint --fix on save'.
+page below in the Settings Dialog and select 'Automatic ESLint configuration' and 'Run eslint --fix on save'.
+
+<img src="./images/lint.png" alt="ESLint settings" style="width:50%;" />
+
 This will run lint checks and auto-fix any fixable issues whenever you save a file
 
 ## Build Targets

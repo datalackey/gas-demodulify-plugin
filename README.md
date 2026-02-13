@@ -1,9 +1,9 @@
-# gas-demodulify
+# gas-demodulify-plugin
 
 ## Table of Contents
 
 <!-- TOC:START -->
-- [gas-demodulify](#gas-demodulify)
+- [gas-demodulify-plugin](#gas-demodulify-plugin)
   - [Table of Contents](#table-of-contents)
   - [Plugin Overview](#plugin-overview)
   - [Support for Modern Architectures Comprised of Subsystems](#support-for-modern-architectures-comprised-of-subsystems)
@@ -38,8 +38,6 @@
   - [Of Interest to Contributors](#of-interest-to-contributors)
 <!-- TOC:END -->
 
-
-
 ## Plugin Overview
 
 A Webpack plugin that flattens modular TypeScript codebases into
@@ -53,12 +51,12 @@ simple codebases and flat scripts, but fail when applied to more
 complex architectures.
 
 So, if your (Typescript) code base
+
 - has multiple subsystems, and
 - you want your emitted GAS code to isolate code for each subsystem into its own namespace, and
 - you are horrified at the prospect of using brittle search and replace on strings to post-modify webpack output
 
 then this plugin is for you.
-
 
 When generating code `gas-demodulify` completely discards Webpack’s emitted runtime artifacts
 — including the __webpack_require__
@@ -70,17 +68,15 @@ delivery model using:
 
 - user supplied namespace configuration metadata
 - transpiled module sources provided by Webpack’s compilation pipeline
- (after module dependency resolution and type-checking, but before runtime execution)
+  (after module dependency resolution and type-checking, but before runtime execution)
 
 Caveat: Our plugin disallows certain patterns and configurations -- in both source code and Webpack config --
 that produce invalid GAS code. See the [Restrictions](#restrictions) section for details.
 
-
-
 ## Support for Modern Architectures Comprised of Subsystems
 
 A modern architecture for a complex GAS add-on typically comprises subsystems, with a common organization
-breaking down into: **ui**, **backend (gas)**, and **common**.  We will describe the operation of the plugin assuming
+breaking down into: **ui**, **backend (gas)**, and **common**. We will describe the operation of the plugin assuming
 this tri-layer organization, but the plugin can be adapted to other architectures as well,
 as discussed in the configuration section, below.
 
@@ -88,9 +84,9 @@ as discussed in the configuration section, below.
 
 The UI subsystem typically consists of:
 
-- HTMLService dialogs    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but  pushed 'raw' by clasp)
-- Sidebar interfaces     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but  pushed 'raw' by clasp)
-- svg images for icons   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but  pushed 'raw' by clasp)
+- HTMLService dialogs &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but pushed 'raw' by clasp)
+- Sidebar interfaces &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but pushed 'raw' by clasp)
+- svg images for icons &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # (not typically bundled, but pushed 'raw' by clasp)
 - Client-side controller logic running in browser
 - Multi-step orchestration flows unsuitable for pure GAS execution
 
@@ -119,14 +115,14 @@ is necessary because we need to make common code available in two different gene
 be included in the HTML served to
 the client via
 [HtmlService.createHtmlOutputFromFile](https://developers.google.com/apps-script/reference/html/html-service#createHtmlOutputFromFile(String)),
-and this requires the code live in a file with extension '.html'.  The other is to
+and this requires the code live in a file with extension '.html'. The other is to
 be included in the server-side GAS code, and thus must have extension '.gs'.
 
-
 A normal Webpack build cannot satisfy the above requirements, as well as some of the more subtle
-requirements  discussed in [this section](#finer-points-regarding-how-code-must-be-bundled-for-gas)
+requirements discussed in [this section](#finer-points-regarding-how-code-must-be-bundled-for-gas)
 .
 Furthermore, Google Apps Script cannot:
+
 - run Webpack's module runtime, `__webpack_require__`,
 - nor its wrapping IIFE,
 - nor resolve its internal module map.
@@ -263,14 +259,11 @@ UI.
     globalThis.MYADDON.UI.startUiFlow = startUiFlow;
     </script>
 
-
-
 ------------------------------------------------------------------------
 
 ## Finer Points Regarding How Code Must Be Bundled for GAS
 
 ### Why should client-side browser code be processed with Webpack at all?
-
 
 Although the UI code of a GAS add-on ultimately executes inside your
 browser (for example, within a dialog or sidebar iframe),
@@ -319,9 +312,6 @@ time, no import or export syntax remaining, and no Webpack runtime
 present. Webpack, in conjunction with our plugin, performs this 'flattening'
 and demodulification automatically.
 
-
-
-
 ### How Load Order Can Be Leveraged to Manage Inter-Subsystem Dependencies -- OBSOLETE
 
 Most complex GAS add-ons begin with a tri-layer structure:
@@ -357,7 +347,6 @@ Therefore:
 - `COMMON` must appear **first** in `.gs` load order.
 - `GAS` must appear **after COMMON**.
 
-
 In older build systems, developers often handled this requirement using ad-hoc
 post-processing scripts or manual renaming, commonly prefixing shared bundles
 with names like `AAA_common.gs` to force correct load order.
@@ -368,7 +357,7 @@ that all generated bundles are clean, GAS-compatible artifacts whose load order
 is determined entirely by standard Webpack configuration. In particular,
 lexicographical load ordering is enforced by choosing appropriate values for
 Webpack’s `output.filename`, allowing shared dependencies to sort before the
-subsystems that depend on them.   You still have to think about your inter-subsystem dependencies
+subsystems that depend on them. You still have to think about your inter-subsystem dependencies
 and choose names accordingly, but you can handle this entirely via webpack configuration, with no
 tedious post-processing required.
 
@@ -393,7 +382,6 @@ which sorts before `01_gas.[contenthash].gs` and `02_charts.[contenthash].gs` et
       }
 ```
 
-
 ------------------------------------------------------------------------
 
 ## Restrictions
@@ -403,54 +391,56 @@ Please design your code to avoid the following patterns; violations will
 either be rejected by the plugin at build time or code you want to keep will be stripped (which may
 cause hard-to-diagnose bugs that change runtime behavior).
 
-
-
 - Forbidden Webpack runtime artifacts
-  - Any substring matching the values in [FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS](src/plugin/invariants.ts) 
-    is not allowed in emitted output.  Currently,  this includes:
-    - `__webpack_` (any Webpack helper/runtime identifier)
-    - `.__esModule` (ES module interop artifact)
-  - Rationale: GAS cannot execute Webpack's module runtime (for example `__webpack_require__`) or interop boilerplate. 
-  - Fix: Remove direct references to Webpack internals from your source. 
+    - Any substring matching the values in [FORBIDDEN_WEBPACK_RUNTIME_SUBSTRINGS](src/plugin/invariants.ts)
+      is not allowed in emitted output. Currently, this includes:
+        - `__webpack_` (any Webpack helper/runtime identifier)
+        - `.__esModule` (ES module interop artifact)
+    - Rationale: GAS cannot execute Webpack's module runtime (for example `__webpack_require__`) or interop boilerplate.
+    - Fix: Remove direct references to Webpack internals from your source.
 
 - No wildcard re-exports
-  - Patterns rejected: `export * from './module'`, `export * as ns from './module'`, and bare `export *`.
-  - Rationale: wildcard re-exports create a non-deterministic export surface which cannot be 
-    reliably flattened to a single GAS namespace.
-  - Fix: Replace wildcard re-exports with explicit, named re-exports, for example:
-    - Bad: `export * from './utils'`
-    - Good: `export { foo, bar } from './utils'`
+    - Patterns rejected: `export * from './module'`, `export * as ns from './module'`, and bare `export *`.
+    - Rationale: wildcard re-exports create a non-deterministic export surface which cannot be
+      reliably flattened to a single GAS namespace.
+    - Fix: Replace wildcard re-exports with explicit, named re-exports, for example:
+        - Bad: `export * from './utils'`
+        - Good: `export { foo, bar } from './utils'`
 
-  - Avoid dynamic/conditional module loading patterns                                     
-    - Patterns such as dynamic `import(...)`, `require()` with non-static arguments, or runtime code generation 
-      that depends on bundler behavior are fragile and may not demodulify correctly.  
-      For example: `const mod = require("./helpers/" + helperName);`
-    - Fix: Prefer static, unconditional imports/exports so Webpack can produce deterministic, statically-analyzable output.  
-      Note there is no enforcement of this by the plugin, but such patterns may lead to runtime errors.
+    - Avoid dynamic/conditional module loading patterns
+        - Patterns such as dynamic `import(...)`, `require()` with non-static arguments, or runtime code generation
+          that depends on bundler behavior are fragile and may not demodulify correctly.  
+          For example: `const mod = require("./helpers/" + helperName);`
+        - Fix: Prefer static, unconditional imports/exports so Webpack can produce deterministic, statically-analyzable
+          output.  
+          Note there is no enforcement of this by the plugin, but such patterns may lead to runtime errors.
 
 - Source files and source maps
-  - The plugin strips some runtime helpers and rewrites lines; try to preserve source maps 
-    during your toolchain if you rely on debugging information. Avoid constructs that cause significant codegen wrapper insertion.
+    - The plugin strips some runtime helpers and rewrites lines; try to preserve source maps
+      during your toolchain if you rely on debugging information. Avoid constructs that cause significant codegen
+      wrapper insertion.
 
 - Exactly one TypeScript entry module
-  - The plugin requires exactly one TypeScript-authored entry module per build. The entry module defines the 
-    entire public API surface exposed to the Google Apps Script runtime. All GAS-visible functions must 
-    be exported from this module, either directly or via explicit named re-exports. Other files may participate 
-    freely  in implementation via imports, but only the entry module’s exports are attached to the GAS namespace.
-    - Disallowed entry configurations
-        - The following are explicitly not supported, even though Webpack itself may allow them:
-            - Array-based entries, e.g.:    `entry: { gas: ["./a.ts", "./b.ts"] }`
-            - Glob-based or auto-discovered entries, e.g.: ` entry: { gas: glob.sync("src/gas/*.ts") }`
-  - See [here](docs/plugin-design.md#why-exactly-one-webpack-entry-is-required) for more details.
+    - The plugin requires exactly one TypeScript-authored entry module per build. The entry module defines the
+      entire public API surface exposed to the Google Apps Script runtime. All GAS-visible functions must
+      be exported from this module, either directly or via explicit named re-exports. Other files may participate
+      freely in implementation via imports, but only the entry module’s exports are attached to the GAS namespace.
+        - Disallowed entry configurations
+            - The following are explicitly not supported, even though Webpack itself may allow them:
+                - Array-based entries, e.g.:    `entry: { gas: ["./a.ts", "./b.ts"] }`
+                - Glob-based or auto-discovered entries, e.g.: ` entry: { gas: glob.sync("src/gas/*.ts") }`
+    - See [here](docs/plugin-design.md#why-exactly-one-webpack-entry-is-required) for more details.
 
--  Output filename is intentionally ignored
-    - When gas-demodulify is enabled, we ignore, and actually delete the JavaScript bundle that 
-      Webpack would otherwise emit. This is because that bundle contains runtime artifacts that GAS 
+- Output filename is intentionally ignored
+    - When gas-demodulify is enabled, we ignore, and actually delete the JavaScript bundle that
+      Webpack would otherwise emit. This is because that bundle contains runtime artifacts that GAS
       cannot execute. To make this obvious and avoid accidental misuse, the plugin requires a sentinel value
-      be specified for `output.filename` in your Webpack config: `output: { filename: "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME" ...`
+      be specified for `output.filename` in your Webpack config:
+      `output: { filename: "OUTPUT-BUNDLE-FILENAME-DERIVED-FROM-ENTRY-NAME" ...`
       Any other value — including omitting `output.filename` — is rejected.
-   - See [here](docs/plugin-design.md#how-gas-demodulify-separates-wheat-application-code-from-chaff-webpack-boilerplate) 
-     for more details.
+    -
+    See [here](docs/plugin-design.md#how-gas-demodulify-separates-wheat-application-code-from-chaff-webpack-boilerplate)
+    for more details.
 
 - No aliased re-exports in the entry module
     - Patterns rejected: `export { foo as bar } from './module'`
@@ -471,21 +461,15 @@ cause hard-to-diagnose bugs that change runtime behavior).
           }
           ```
 
-
-
 ## Configuration
 
-
 ### General Options
-
 
 #### module.exports.entry
 
 The emitted output filename is derived from the Webpack entrypoint name.
-For example, an entry named gas will emit gas.gs. This was discussed in more detail in the previous section's 
+For example, an entry named gas will emit gas.gs. This was discussed in more detail in the previous section's
 discusion of the restriction *Exactly one TypeScript entry module*.
-
-
 
 ### Plugin Constructor Options
 
@@ -502,14 +486,14 @@ a standard Javascript dictionary:
 
 You can call the plugin with an empty options object, and all options will take their default values.
 
-
 #### *namespaceRoot*
 
 The top-level global namespace under which all generated symbols will be attached (e.g. MYADDON, MyCompany.ProjectFoo).
+
 - Default: DEFAULT
 
-
 #### *subsystem*
+
 In most projects, this is a single identifier such as `UI`, `GAS`, or `COMMON`, and for the example above
 we get the namespace: `MYADDON.UI` Advanced users may specify a dotted path to create deeper hierarchy:
 
@@ -517,8 +501,8 @@ we get the namespace: `MYADDON.UI` Advanced users may specify a dotted path to c
        subsystem: "UI.Dialogs"
 
 Which produces `MYADDON.UI.Dialogs`
-- Default: DEFAULT 
 
+- Default: DEFAULT
 
 #### *buildMode*
 
@@ -536,7 +520,6 @@ Controls how default exports are attached to the GAS namespace.
 If this option is provided, the default export is mapped to the specified symbol name.
 
 - Default: - defaultExport
-
 
 ###### Example
 
@@ -564,8 +547,6 @@ In this case, the default export is attached to the GAS namespace using the expl
 
 > globalThis.MYADDON.UI.main = main;
 
-
-
 ### Log level
 
 Control the verbosity of the plugin's diagnostic output. Accepted values are:
@@ -578,10 +559,10 @@ Precedence and behavior:
 
 - If the environment variable `LOGLEVEL` is present and set to a valid value, it overrides the explicit `logLevel`
   option passed to the plugin. For example:
-  - `LOGLEVEL=debug npm run build` will enable debug output regardless of the
-    plugin config's `logLevel` option.
-  - `LOGLEVEL=silent npm run build` will surpress all output except for warnings and errors.
-     (useful for figuring out which tests in a suite failed without reams of log noise).
+    - `LOGLEVEL=debug npm run build` will enable debug output regardless of the
+      plugin config's `logLevel` option.
+    - `LOGLEVEL=silent npm run build` will surpress all output except for warnings and errors.
+      (useful for figuring out which tests in a suite failed without reams of log noise).
 - If `LOGLEVEL` is not set, the plugin uses the explicit `logLevel` option when provided.
 - If neither `LOGLEVEL` nor an explicit `logLevel` is provided, the default level is `info`.
 - Invalid log level values (from the environment or the explicit option) are treated as configuration errors and
@@ -592,13 +573,12 @@ The environment variable takes precedence.
 
 - Default: info
 
-## Of Interest to Contributors 
+## Of Interest to Contributors
 
 If you’re interested in the internal architecture of this plugin or in contributing to its development, see:
 
 - [Guidance for Plugin Maintainers](docs/guidance-for-plugin-maintainers.md)
 - [Plugin Design](docs/plugin-design.md)
-
 
 The design discussion also includes a discussion of how webpack typically fits into build pipelines which target
 GAS as an execution environment.
