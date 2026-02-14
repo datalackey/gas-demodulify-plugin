@@ -1,5 +1,28 @@
 # gas-demodulify-plugin
 
+Graph: 
+
+```mermaid
+graph TD
+  release["release<br/>Full release pipeline"]
+  package["package<br/>npm pack"]
+  build["build<br/>lint + format + toc + test"]
+  lint["lint<br/>ESLint"]
+  format["format<br/>Prettier"]
+  toc["toc:check<br/>Markdown validation"]
+  test["test<br/>Jest"]
+  compile["compile<br/>TypeScript → dist"]
+
+  release --> package
+  package --> build
+  build --> lint
+  build --> format
+  build --> toc
+  build --> test
+  test --> compile
+```
+
+
 ## Table of Contents
 
 <!-- TOC:START -->
