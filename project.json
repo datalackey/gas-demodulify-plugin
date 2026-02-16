@@ -18,12 +18,12 @@
       "cache": true
     },
     "format:check": {
-      "command": "prettier --check . || (echo 'Code style check failed. Run locally: npx nx run gas-demodulify-plugin:format .' && exit 1)",
+      "command": "./scripts/run-with-diagnostics.sh --cmd 'prettier --check .' --header 'PRETTIER CHECK FAILED' --detail 'Run locally: npx nx run gas-demodulify-plugin:format'",
       "outputs": [],
       "cache": true
     },
     "toc:check": {
-      "command": "update-markdown-toc --check --recursive . || (echo 'TOC check failed. Run locally: npx nx run gas-demodulify-plugin:toc:update' && exit 1)",
+      "command": "./scripts/run-with-diagnostics.sh --cmd 'update-markdown-toc --check --recursive .' --header 'TOC CHECK FAILED' --detail 'Run locally: npx nx run gas-demodulify-plugin:toc:update'",
       "outputs": [],
       "cache": true
     },
@@ -33,7 +33,7 @@
       "cache": false
     },
     "typecheck": {
-      "command": "tsc -p tsconfig.typecheck.json || (echo 'Typecheck failed. Run locally: npx nx run gas-demodulify-plugin:typecheck .' && exit 1)",
+      "command": "./scripts/run-with-diagnostics.sh --cmd 'tsc -p tsconfig.typecheck.json' --header 'TYPECHECK FAILED' --detail 'Run locally: npx nx run gas-demodulify-plugin:typecheck'",
       "outputs": [],
       "cache": true
     },

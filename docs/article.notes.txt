@@ -1,3 +1,17 @@
+two ideas !
+
+
+article on nx build pipelines for javascript.
+    show weak spot.. not a DSL.. 
+
+    either write a plugin. 
+
+    or shell escaping (ugly / brittle)
+      "command": "prettier --check . || (echo '' >&2 && echo -e '\\033[31m❌ PRETTIER CHECK FAILED\\033[0m' >&2 && echo 'Run locally: npx nx run gas-demodulify-plugin:format' >&2 && echo '' >&2 && exit 1)",
+
+
+
+
 Lesson Learned: Re-exports Don’t Create Runtime Code (and GAS Cares)
 
 While building a Webpack plugin to flatten TypeScript modules into Google Apps Script–compatible output, I ran into a bug that turned out to be far more instructive than expected. The fix wasn’t a clever Webpack hack — it was understanding a fundamental mismatch between GAS and modern JavaScript bundlers.
