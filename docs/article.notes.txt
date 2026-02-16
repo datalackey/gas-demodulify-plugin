@@ -9,6 +9,15 @@ article on nx build pipelines for javascript.
     or shell escaping (ugly / brittle)
       "command": "prettier --check . || (echo '' >&2 && echo -e '\\033[31m❌ PRETTIER CHECK FAILED\\033[0m' >&2 && echo 'Run locally: npx nx run gas-demodulify-plugin:format' >&2 && echo '' >&2 && exit 1)",
 
+    instead.. show how we did w> 
+
+        "format:check": {
+            "command": "./scripts/run-with-diagnostics.sh --cmd 'prettier --check .' --header 'PRETTIER CHECK FAILED' --detail 'Run locally: npx nx run gas-demodulify-plugin:format'",
+            "outputs": [],
+            "cache": true
+        },
+        "toc:check": {
+
 
 
 

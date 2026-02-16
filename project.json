@@ -65,21 +65,6 @@
         "release": {
             "dependsOn": ["package"],
             "description": "Full release pipeline"
-        },
-        "autogen:project-graph": {
-            "command": "nx graph --file=docs/nx-build-graph.html",
-            "outputs": ["{projectRoot}/docs/nx-build-graph.html"],
-            "cache": true,
-            "inputs": ["default", "^default"]
-        },
-        "autogen:task-graph-build": {
-            "command": "nx run gas-demodulify-plugin:build --graph",
-            "outputs": [],
-            "cache": false
-        },
-        "autogen:docs": {
-            "dependsOn": ["autogen:project-graph"],
-            "cache": true
         }
     }
 }
