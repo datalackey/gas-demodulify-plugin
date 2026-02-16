@@ -1,84 +1,109 @@
 {
-    "name": "gas-demodulify-plugin",
-    "sourceRoot": "src",
-    "projectType": "library",
-    "targets": {
-        "clean": {
-            "command": "rm -rf dist coverage docs/nx-build-graph.html",
-            "cache": false
-        },
-        "lint": {
-            "command": "eslint 'src/**/*.ts'",
-            "outputs": [],
-            "cache": true
-        },
-        "format": {
-            "command": "prettier --write . --log-level warn",
-            "outputs": [],
-            "cache": true
-        },
-        "format:check": {
-            "command": "prettier --check . || (echo 'Code style check failed. Run locally: npx nx run gas-demodulify-plugin:format .' && exit 1)",
-            "outputs": [],
-            "cache": true
-        },
-        "toc:check": {
-            "command": "update-markdown-toc --check --recursive . || (echo 'TOC check failed. Run locally: npm run docs:toc:update .' && exit 1)",
-            "outputs": [],
-            "cache": true
-        },
-        "toc:update": {
-            "command": "update-markdown-toc --recursive .",
-            "outputs": [],
-            "cache": false
-        },
-        "typecheck": {
-            "command": "tsc -p tsconfig.typecheck.json || (echo 'Typecheck failed. Run locally: npx nx run gas-demodulify-plugin:typecheck .' && exit 1)",
-            "outputs": [],
-            "cache": true
-        },
-        "compile": {
-            "command": "tsc -p tsconfig.build.json",
-            "outputs": ["{projectRoot}/dist"],
-            "cache": true
-        },
-        "test": {
-            "executor": "@nx/jest:jest",
-            "dependsOn": ["compile"],
-            "outputs": ["{projectRoot}/coverage"],
-            "options": {
-                "jestConfig": "{projectRoot}/jest.config.cjs",
-                "passWithNoTests": true,
-                "silent": true,
-                "verbose": false
-            }
-        },
-        "build": {
-            "dependsOn": ["lint", "format:check", "toc:check", "test"]
-        },
-        "package": {
-            "dependsOn": ["build"],
-            "command": "npm pack",
-            "outputs": ["{projectRoot}/*.tgz"],
-            "cache": true
-        },
-        "release": {
-            "dependsOn": ["package"]
-        },
-        "autogen:project-graph": {
-            "command": "nx graph --file=docs/nx-build-graph.html",
-            "outputs": ["{projectRoot}/docs/nx-build-graph.html"],
-            "cache": true,
-            "inputs": ["default", "^default"]
-        },
-        "autogen:task-graph-build": {
-            "command": "nx run gas-demodulify-plugin:build --graph",
-            "outputs": [],
-            "cache": false
-        },
-        "autogen:docs": {
-            "dependsOn": ["autogen:project-graph"],
-            "cache": true
-        }
+  "name": "gas-demodulify-plugin",
+  "sourceRoot": "src",
+  "projectType": "library",
+  "targets": {
+    "clean": {
+      "command": "rm -rf dist coverage docs/nx-build-graph.html",
+      "cache": false
+    },
+    "lint": {
+      "command": "eslint 'src/**/*.ts'",
+      "outputs": [],
+      "cache": true
+    },
+    "format": {
+      "command": "prettier --write . --log-level warn",
+      "outputs": [],
+      "cache": true
+    },
+    "format:check": {
+      "command": "prettier --check . || (echo 'Code style check failed. Run locally: npx nx run gas-demodulify-plugin:format .' && exit 1)",
+      "outputs": [],
+      "cache": true
+    },
+    "toc:check": {
+      "command": "update-markdown-toc --check --recursive . || (echo 'TOC check failed. Run locally: npx nx run gas-demodulify-plugin:toc:update' && exit 1)",
+      "outputs": [],
+      "cache": true
+    },
+    "toc:update": {
+      "command": "update-markdown-toc --recursive .",
+      "outputs": [],
+      "cache": false
+    },
+    "typecheck": {
+      "command": "tsc -p tsconfig.typecheck.json || (echo 'Typecheck failed. Run locally: npx nx run gas-demodulify-plugin:typecheck .' && exit 1)",
+      "outputs": [],
+      "cache": true
+    },
+    "compile": {
+      "command": "tsc -p tsconfig.build.json",
+      "outputs": [
+        "{projectRoot}/dist"
+      ],
+      "cache": true
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "dependsOn": [
+        "compile"
+      ],
+      "outputs": [
+        "{projectRoot}/coverage"
+      ],
+      "options": {
+        "jestConfig": "{projectRoot}/jest.config.cjs",
+        "passWithNoTests": true,
+        "silent": true,
+        "verbose": false
+      }
+    },
+    "build": {
+      "dependsOn": [
+        "lint",
+        "format:check",
+        "toc:check",
+        "test"
+      ]
+    },
+    "package": {
+      "dependsOn": [
+        "build"
+      ],
+      "command": "npm pack",
+      "outputs": [
+        "{projectRoot}/*.tgz"
+      ],
+      "cache": true
+    },
+    "release": {
+      "dependsOn": [
+        "package"
+      ],
+      "description": "Full release pipeline"
+    },
+    "autogen:project-graph": {
+      "command": "nx graph --file=docs/nx-build-graph.html",
+      "outputs": [
+        "{projectRoot}/docs/nx-build-graph.html"
+      ],
+      "cache": true,
+      "inputs": [
+        "default",
+        "^default"
+      ]
+    },
+    "autogen:task-graph-build": {
+      "command": "nx run gas-demodulify-plugin:build --graph",
+      "outputs": [],
+      "cache": false
+    },
+    "autogen:docs": {
+      "dependsOn": [
+        "autogen:project-graph"
+      ],
+      "cache": true
     }
+  }
 }
