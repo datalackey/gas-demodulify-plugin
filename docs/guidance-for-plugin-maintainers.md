@@ -1,26 +1,28 @@
 # Guidance For Plugin Maintainers
 
 <!-- TOC:START -->
+
 - [Guidance For Plugin Maintainers](#guidance-for-plugin-maintainers)
-  - [Overview](#overview)
-  - [First-time setup](#first-time-setup)
-  - [Development Stack](#development-stack)
-    - [Overview](#overview-1)
-    - [Inventory of Technologies](#inventory-of-technologies)
-      - [Task Orchestration and Build Caching via NX](#task-orchestration-and-build-caching-via-nx)
-      - [Continuous Integration (CI) Via Github Actions](#continuous-integration-ci-via-github-actions)
-      - [TypeScript](#typescript)
-      - [Node.js](#nodejs)
-      - [ESLint](#eslint)
-      - [Prettier](#prettier)
-      - [Unit Testing via Jest](#unit-testing-via-jest)
-      - [Webpack (Test Fixtures)](#webpack-test-fixtures)
-    - [IDE Setup (Intellij IDEA)](#ide-setup-intellij-idea)
-      - [Incremental Lint'ing](#incremental-linting)
-      - [Incremental Code Formatting](#incremental-code-formatting)
-  - [Build Targets](#build-targets)
-  - [Running Samples](#running-samples)
-  - [Contributing a PR -- OBSOLETE](#contributing-a-pr----obsolete)
+    - [Overview](#overview)
+    - [First-time setup](#first-time-setup)
+    - [Development Stack](#development-stack)
+        - [Overview](#overview-1)
+        - [Inventory of Technologies](#inventory-of-technologies)
+            - [Task Orchestration and Build Caching via NX](#task-orchestration-and-build-caching-via-nx)
+            - [Continuous Integration (CI) Via Github Actions](#continuous-integration-ci-via-github-actions)
+            - [TypeScript](#typescript)
+            - [Node.js](#nodejs)
+            - [ESLint](#eslint)
+            - [Prettier](#prettier)
+            - [Unit Testing via Jest](#unit-testing-via-jest)
+            - [Webpack (Test Fixtures)](#webpack-test-fixtures)
+        - [IDE Setup (Intellij IDEA)](#ide-setup-intellij-idea)
+            - [Incremental Lint'ing](#incremental-linting)
+            - [Incremental Code Formatting](#incremental-code-formatting)
+    - [Build Targets](#build-targets)
+    - [Running Samples](#running-samples)
+    - [Contributing a PR -- OBSOLETE](#contributing-a-pr----obsolete)
+
 <!-- TOC:END -->
 
 ## Overview
@@ -72,14 +74,34 @@ The [NX](https://nx.dev/docs/getting-started) configuration file
 which defines the build targets and their dependencies can be found [here](../project.json), and
 the CI build invokes more or less the following steps:
 
-    gas-demodulify-plugin:release
-    └─ gas-demodulify-plugin:package
-            └─ gas-demodulify-plugin:build
-            ├─ gas-demodulify-plugin:lint
-            ├─ gas-demodulify-plugin:format
-            ├─ gas-demodulify-plugin:toc:check
-            └─ gas-demodulify-plugin:test
-                └─ gas-demodulify-plugin:compile
+
+<!-- NX_GRAPH:START -->
+```mermaid
+graph TD
+
+  build
+  clean
+  compile
+  format
+  format_check
+  lint
+  package
+  release["release<br/>Full release pipeline"]
+  test
+  toc_check
+  toc_update
+  typecheck
+  update_task_graph
+
+  build --> format_check
+  build --> lint
+  build --> test
+  build --> toc_check
+  package --> build
+  release --> package
+  test --> compile
+```
+<!-- NX_GRAPH:END -->
 
 #### Continuous Integration (CI) Via Github Actions
 
